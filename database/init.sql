@@ -1,5 +1,5 @@
 -- FastGPT工作流案例数据库初始化脚本
--- 数据库连接: postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true
+-- 根据实际数据库表结构更新
 
 -- 创建数据库扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -35,25 +35,19 @@ CREATE TABLE IF NOT EXISTS workflows (
     id VARCHAR(50) PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     description TEXT NOT NULL,
-    category_id VARCHAR(50) NOT NULL REFERENCES workflow_categories(id),
     author_id INTEGER NOT NULL REFERENCES authors(id),
-    thumbnail_url TEXT NOT NULL,
-    usage_count INTEGER DEFAULT 0,
-    like_count INTEGER DEFAULT 0,
-    demo_url TEXT,
-    is_featured BOOLEAN DEFAULT false,
+    category_id VARCHAR(50) NOT NULL REFERENCES workflow_categories(id),
     is_published BOOLEAN DEFAULT true,
+    is_featured BOOLEAN DEFAULT false,
+    like_count INTEGER DEFAULT 0,
+    usage_count INTEGER DEFAULT 0,
     json_source TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMP
 );
 
--- 4. 工作流配置表已删除（API中未使用）
-
-
-
--- 7. 工作流截图表
+-- 4. 工作流截图表
 CREATE TABLE IF NOT EXISTS workflow_screenshots (
     id SERIAL PRIMARY KEY,
     workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
@@ -63,7 +57,7 @@ CREATE TABLE IF NOT EXISTS workflow_screenshots (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. 工作流说明表
+-- 5. 工作流说明表
 CREATE TABLE IF NOT EXISTS workflow_instructions (
     id SERIAL PRIMARY KEY,
     workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
@@ -72,9 +66,7 @@ CREATE TABLE IF NOT EXISTS workflow_instructions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
-
--- 10. 用户行为统计表
+-- 6. 用户行为统计表
 CREATE TABLE IF NOT EXISTS user_actions (
     id SERIAL PRIMARY KEY,
     workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id),
@@ -185,10 +177,8 @@ SELECT
     w.id,
     w.title,
     w.description,
-    w.thumbnail_url,
     w.usage_count,
     w.like_count,
-    w.demo_url,
     w.is_featured,
     w.is_published,
     w.created_at,
@@ -196,8 +186,6 @@ SELECT
     w.published_at,
     -- 分类信息
     c.name as category_name,
-    c.icon as category_icon,
-    c.color as category_color,
     -- 作者信息
     a.name as author_name,
     a.avatar_url as author_avatar,
@@ -211,15 +199,13 @@ CREATE OR REPLACE VIEW category_stats AS
 SELECT 
     c.id,
     c.name,
-    c.icon,
-    c.color,
     COUNT(w.id) as workflow_count,
     COALESCE(SUM(w.usage_count), 0) as total_usage,
     COALESCE(SUM(w.like_count), 0) as total_likes
 FROM workflow_categories c
 LEFT JOIN workflows w ON c.id = w.category_id AND w.is_published = true
 WHERE c.is_active = true
-GROUP BY c.id, c.name, c.icon, c.color, c.sort_order
+GROUP BY c.id, c.name, c.sort_order
 ORDER BY c.sort_order;
 
 
