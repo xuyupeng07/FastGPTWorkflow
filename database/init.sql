@@ -91,14 +91,7 @@ CREATE TABLE IF NOT EXISTS workflow_instructions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. 工作流需求表
-CREATE TABLE IF NOT EXISTS workflow_requirements (
-    id SERIAL PRIMARY KEY,
-    workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-    requirement_text TEXT NOT NULL,
-    sort_order INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+
 
 -- 10. 用户行为统计表
 CREATE TABLE IF NOT EXISTS user_actions (
@@ -148,8 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_screenshots_workflow ON workflow_screenshots(work
 -- 说明表索引
 CREATE INDEX IF NOT EXISTS idx_instructions_workflow ON workflow_instructions(workflow_id, sort_order);
 
--- 需求表索引
-CREATE INDEX IF NOT EXISTS idx_requirements_workflow ON workflow_requirements(workflow_id, sort_order);
+
 
 -- 插入初始分类数据
 INSERT INTO workflow_categories (id, name, icon, color, description, sort_order) VALUES

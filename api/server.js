@@ -367,13 +367,7 @@ app.get('/api/workflows/:id', async (req, res) => {
       ORDER BY sort_order
     `, [id]);
     
-    // 获取需求
-    const requirementsResult = await client.query(`
-      SELECT requirement_text
-      FROM workflow_requirements
-      WHERE workflow_id = $1
-      ORDER BY sort_order
-    `, [id]);
+
     
     // 组装完整数据
     const fullWorkflow = {
@@ -381,7 +375,6 @@ app.get('/api/workflows/:id', async (req, res) => {
       tags: tagsResult.rows.map(row => row.name),
       screenshots: screenshotsResult.rows.map(row => row.image_url),
       instructions: instructionsResult.rows.map(row => row.instruction_text),
-      requirements: requirementsResult.rows.map(row => row.requirement_text),
       config: workflow.json_source ? (() => {
         try {
           return JSON.parse(workflow.json_source);
@@ -800,8 +793,7 @@ app.delete('/api/admin/workflows/:id', async (req, res) => {
       // 删除相关的说明
       await client.query('DELETE FROM workflow_instructions WHERE workflow_id = $1', [id]);
       
-      // 删除相关的需求
-      await client.query('DELETE FROM workflow_requirements WHERE workflow_id = $1', [id]);
+
       
       // 删除用户行为记录
       await client.query('DELETE FROM user_actions WHERE workflow_id = $1', [id]);
