@@ -9,8 +9,6 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE TABLE IF NOT EXISTS workflow_categories (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    icon VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
     description TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
@@ -125,17 +123,15 @@ CREATE INDEX IF NOT EXISTS idx_instructions_workflow ON workflow_instructions(wo
 
 
 -- 插入初始分类数据
-INSERT INTO workflow_categories (id, name, icon, color, description, sort_order) VALUES
-('customer-service', '客服助手', 'MessageCircle', '#3b82f6', '智能客服和对话助手相关工作流', 1),
-('content-creation', '内容创作', 'PenTool', '#8b5cf6', '文章写作、内容生成相关工作流', 2),
-('data-analysis', '数据分析', 'BarChart3', '#10b981', '数据处理和分析相关工作流', 3),
-('automation', '自动化', 'Zap', '#f59e0b', '流程自动化和任务处理工作流', 4),
-('education', '教育培训', 'GraduationCap', '#ef4444', '教学和培训相关工作流', 5),
-('business', '商业应用', 'Briefcase', '#6366f1', '商业流程和企业应用工作流', 6)
+INSERT INTO workflow_categories (id, name, description, sort_order) VALUES
+('customer-service', '客服助手', '智能客服和对话助手相关工作流', 1),
+('content-creation', '内容创作', '文章写作、内容生成相关工作流', 2),
+('data-analysis', '数据分析', '数据处理和分析相关工作流', 3),
+('automation', '自动化', '流程自动化和任务处理工作流', 4),
+('education', '教育培训', '教学和培训相关工作流', 5),
+('business', '商业应用', '商业流程和企业应用工作流', 6)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
-    icon = EXCLUDED.icon,
-    color = EXCLUDED.color,
     description = EXCLUDED.description,
     sort_order = EXCLUDED.sort_order,
     updated_at = CURRENT_TIMESTAMP;

@@ -27,8 +27,6 @@
 CREATE TABLE workflow_categories (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    icon VARCHAR(50) NOT NULL,
-    color VARCHAR(7) NOT NULL,
     description TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
@@ -67,7 +65,6 @@ CREATE TABLE workflows (
     estimated_time VARCHAR(50) NOT NULL,
     usage_count INTEGER DEFAULT 0,
     like_count INTEGER DEFAULT 0,
-    view_count INTEGER DEFAULT 0,
     demo_url TEXT,
     share_id VARCHAR(100) UNIQUE, -- FastGPT分享ID
     is_featured BOOLEAN DEFAULT false,
@@ -94,25 +91,7 @@ CREATE TABLE workflow_configs (
 );
 ```
 
-#### 2.2.5 工作流标签表 (workflow_tags)
-```sql
-CREATE TABLE workflow_tags (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    color VARCHAR(7) DEFAULT '#6b7280',
-    usage_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
 
-#### 2.2.6 工作流标签关联表 (workflow_tag_relations)
-```sql
-CREATE TABLE workflow_tag_relations (
-    workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-    tag_id INTEGER NOT NULL REFERENCES workflow_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (workflow_id, tag_id)
-);
-```
 
 #### 2.2.7 工作流截图表 (workflow_screenshots)
 ```sql
@@ -175,10 +154,6 @@ CREATE INDEX idx_workflows_created ON workflows(created_at DESC);
 -- 全文搜索索引
 CREATE INDEX idx_workflows_search ON workflows USING gin(to_tsvector('english', title || ' ' || description));
 
--- 标签关联索引
-CREATE INDEX idx_tag_relations_workflow ON workflow_tag_relations(workflow_id);
-CREATE INDEX idx_tag_relations_tag ON workflow_tag_relations(tag_id);
-
 -- 用户行为索引
 CREATE INDEX idx_user_actions_workflow ON user_actions(workflow_id, action_type);
 CREATE INDEX idx_user_actions_time ON user_actions(created_at);
@@ -207,7 +182,7 @@ interface GetWorkflowsQuery {
   limit?: number;          // 每页数量，默认20，最大100
   category?: string;       // 分类ID
   difficulty?: string;     // 难度级别
-  tags?: string[];         // 标签数组
+
   search?: string;         // 搜索关键词
   sortBy?: 'newest' | 'popular' | 'usage' | 'likes'; // 排序方式
   featured?: boolean;      // 是否只返回精选
@@ -230,7 +205,6 @@ interface GetWorkflowsResponse {
     };
     filters: {
       categories: WorkflowCategory[];
-      tags: WorkflowTag[];
       difficulties: string[];
     };
   };
@@ -249,7 +223,6 @@ interface GetWorkflowResponse {
     workflow: Workflow;
     related: Workflow[]; // 相关工作流
     stats: {
-      viewCount: number;
       copyCount: number;
       tryCount: number;
     };
@@ -274,7 +247,7 @@ interface CreateWorkflowRequest {
   estimatedTime: string;
   demoUrl?: string;
   shareId?: string;
-  tags: string[];
+
   screenshots: string[];
   instructions: string[];
   requirements: string[];
@@ -312,15 +285,7 @@ interface GetCategoriesResponse {
 ##### DELETE /api/categories/[id]
 删除分类
 
-#### 3.2.3 标签相关接口
-
-##### GET /api/tags
-获取所有标签
-
-##### GET /api/tags/popular
-获取热门标签
-
-#### 3.2.4 统计相关接口
+#### 3.2.3 统计相关接口
 
 ##### POST /api/workflows/[id]/actions
 记录用户行为
@@ -343,7 +308,6 @@ interface DashboardStatsResponse {
   success: boolean;
   data: {
     totalWorkflows: number;
-    totalViews: number;
     totalCopies: number;
     totalTries: number;
     popularWorkflows: Workflow[];
@@ -355,7 +319,6 @@ interface DashboardStatsResponse {
     }[];
     dailyStats: {
       date: string;
-      views: number;
       copies: number;
       tries: number;
     }[];
@@ -376,7 +339,7 @@ interface SearchQuery {
   limit?: number;
   category?: string;
   difficulty?: string;
-  tags?: string[];
+
 }
 ```
 
@@ -450,7 +413,6 @@ model Workflow {
   estimatedTime   String            @map("estimated_time")
   usageCount      Int               @default(0) @map("usage_count")
   likeCount       Int               @default(0) @map("like_count")
-  viewCount       Int               @default(0) @map("view_count")
   demoUrl         String?           @map("demo_url")
   shareId         String?           @unique @map("share_id")
   isFeatured      Boolean           @default(false) @map("is_featured")
@@ -463,7 +425,7 @@ model Workflow {
   category        WorkflowCategory  @relation(fields: [categoryId], references: [id])
   author          Author            @relation(fields: [authorId], references: [id])
   config          WorkflowConfig?
-  tags            WorkflowTagRelation[]
+
   screenshots     WorkflowScreenshot[]
   instructions    WorkflowInstruction[]
   requirements    WorkflowRequirement[]
@@ -488,28 +450,7 @@ model WorkflowConfig {
   @@map("workflow_configs")
 }
 
-model WorkflowTag {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
-  color      String   @default("#6b7280")
-  usageCount Int      @default(0) @map("usage_count")
-  createdAt  DateTime @default(now()) @map("created_at")
-  
-  workflows  WorkflowTagRelation[]
-  
-  @@map("workflow_tags")
-}
 
-model WorkflowTagRelation {
-  workflowId String @map("workflow_id")
-  tagId      Int    @map("tag_id")
-  
-  workflow   Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  tag        WorkflowTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  
-  @@id([workflowId, tagId])
-  @@map("workflow_tag_relations")
-}
 
 model WorkflowScreenshot {
   id         Int      @id @default(autoincrement())

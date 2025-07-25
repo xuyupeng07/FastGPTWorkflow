@@ -13,16 +13,10 @@ import { apiCache } from '@/lib/api';
 interface WorkflowCardProps {
   workflow: Workflow;
   index?: number;
-  onDataUpdate?: () => void; // 新增：数据更新回调
+  onDataUpdate?: (() => void) | undefined; // 新增：数据更新回调
 }
 
-const categoryIcons: { [key: string]: React.ReactNode } = {
-  'data-analysis': <Sparkles className="w-5 h-5" />,
-  'automation': <Zap className="w-5 h-5" />,
-  'content': <Eye className="w-5 h-5" />,
-  'customer-service': <Users className="w-5 h-5" />,
-  'default': <Sparkles className="w-5 h-5" />
-};
+
 
 export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCardProps) {
   const [showExperience, setShowExperience] = useState(false);
@@ -409,14 +403,14 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                      target.style.display = 'none';
                      const parent = target.parentElement;
                      if (parent) {
-                       parent.innerHTML = `<div class="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center"><div class="text-gray-600 text-lg">${categoryIcons[workflow.category.id] ? '' : ''}</div></div>`;
+                       parent.innerHTML = `<div class="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center"><div class="text-gray-600 text-lg">📋</div></div>`;
                      }
                    }}
                  />
                ) : (
                  <div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center">
                    <div className="text-gray-600 text-lg">
-                     {categoryIcons[workflow.category.id] || categoryIcons.default}
+                     📋
                    </div>
                  </div>
                )}

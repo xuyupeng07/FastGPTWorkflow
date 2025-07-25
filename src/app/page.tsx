@@ -10,9 +10,10 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   
-  // 一次性获取所有工作流数据，不传递搜索参数
+  // 获取工作流数据，使用合理的分页参数
   const { data: allWorkflows, loading: workflowsLoading, error: workflowsError, refetch: refetchWorkflows } = useWorkflows({
-    limit: 1000, // 获取大量数据
+    limit: 50, // 使用合理的分页大小
+    page: 1
   });
   
   // 在前端进行搜索和分类过滤
@@ -32,7 +33,7 @@ export default function Home() {
       filtered = filtered.filter(workflow => 
         workflow.title.toLowerCase().includes(query) ||
         workflow.description.toLowerCase().includes(query) ||
-        workflow.tags.some(tag => tag.toLowerCase().includes(query))
+        false // 移除标签搜索功能
       );
     }
     

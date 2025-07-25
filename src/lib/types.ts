@@ -5,7 +5,6 @@ export interface WorkflowCard {
   title: string;
   description: string;
   category: string;
-  tags: string[];
   thumbnail: string;
   usageCount: number;
   createdAt: string;
@@ -15,8 +14,6 @@ export interface WorkflowCard {
 export interface WorkflowCategory {
   id: string;
   name: string;
-  icon: string;
-  color: string;
 }
 
 export interface WorkflowNode {
@@ -107,7 +104,6 @@ export interface Workflow {
   description: string;
   longDescription?: string;
   category: WorkflowCategory;
-  tags: string[];
   thumbnail: string;
   screenshots: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
@@ -129,6 +125,5 @@ export interface Workflow {
 
 export interface SearchFilters {
   category?: string;
-  tags?: string[];
   sortBy?: 'popularity' | 'newest' | 'usage';
 }

@@ -249,10 +249,7 @@ export default function WorkflowDetailPage() {
                     >
                       {workflow.difficulty === 'beginner' ? '初级' : 
                        workflow.difficulty === 'intermediate' ? '中级' : '高级'}
-                    </Badge>
-                    {workflow.tags.map((tag) => (
-                      <Badge key={tag} variant="outline">{tag}</Badge>
-                    ))}
+                     </Badge>
                   </div>
                   <CardTitle className="text-3xl font-bold text-gray-800">
                     {workflow.title}

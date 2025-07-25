@@ -46,7 +46,7 @@ LEFT JOIN workflows w ON wc.workflow_id = w.id
 WHERE w.json_source IS NULL OR w.json_source = ''
 LIMIT 10;
 
--- 6. 更新workflow_details视图，移除对workflow_configs表的依赖
+-- 6. 更新workflow_details视图，移除对workflow_configs表和workflow_tag_relations表的依赖
 CREATE OR REPLACE VIEW workflow_details AS
 SELECT 
     w.id,
@@ -95,23 +95,10 @@ SELECT
         WHEN w.json_source IS NOT NULL AND w.json_source != '' THEN
             w.json_source::jsonb
         ELSE NULL
-    END as config_json,
-    -- 标签信息（聚合）
-    COALESCE(
-        json_agg(
-            json_build_object(
-                'id', t.id,
-                'name', t.name,
-                'color', t.color
-            )
-        ) FILTER (WHERE t.id IS NOT NULL), 
-        '[]'::json
-    ) as tags
+    END as config_json
 FROM workflows w
 LEFT JOIN workflow_categories c ON w.category_id = c.id
 LEFT JOIN authors a ON w.author_id = a.id
-LEFT JOIN workflow_tag_relations wtr ON w.id = wtr.workflow_id
-LEFT JOIN workflow_tags t ON wtr.tag_id = t.id
 GROUP BY 
     w.id, w.title, w.description, w.long_description, w.thumbnail_url,
     w.estimated_time, w.usage_count, w.like_count, w.view_count,

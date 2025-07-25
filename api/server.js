@@ -7,7 +7,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
@@ -18,10 +18,14 @@ const PORT = process.env.PORT || 3001;
 // 数据库连接配置
 const DATABASE_URL = 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
 
-// 创建数据库连接池
-const client = new Client({
+// 创建数据库连接池（性能优化）
+const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: false
+  ssl: false,
+  max: 10, // 最大连接数
+  idleTimeoutMillis: 30000, // 空闲连接超时时间
+  connectionTimeoutMillis: 10000, // 连接超时时间增加到10秒
+  query_timeout: 30000, // 查询超时时间
 });
 
 // 中间件配置 - 必须在API端点之前
@@ -68,9 +72,10 @@ const upload = multer({
   }
 });
 
-// 连接数据库
-client.connect().then(() => {
-  console.log('✅ 数据库连接成功');
+// 测试数据库连接
+pool.connect().then(client => {
+  console.log('✅ 数据库连接池创建成功');
+  client.release();
 }).catch(err => {
   console.error('❌ 数据库连接失败:', err);
   process.exit(1);
@@ -98,7 +103,7 @@ app.get('/api/workflows/:id/like-status', async (req, res) => {
     }
     
     // 获取工作流点赞信息
-    const result = await client.query(`
+    const result = await pool.query(`
       SELECT 
         w.like_count,
         CASE WHEN ua.id IS NOT NULL THEN true ELSE false END as user_liked
@@ -175,7 +180,7 @@ app.post('/api/upload/logo', upload.single('logo'), (req, res) => {
  */
 app.get('/api/categories', async (req, res) => {
   try {
-    const result = await client.query(`
+    const result = await pool.query(`
       SELECT c.*,
         (SELECT COUNT(*) FROM workflows w WHERE w.category_id = c.id) as workflow_count
       FROM workflow_categories c
@@ -201,7 +206,7 @@ app.get('/api/categories', async (req, res) => {
  * 查询参数:
  * - category: 分类ID
  * - search: 搜索关键词
- * - tag: 标签
+
  * - page: 页码
  * - limit: 每页数量
  */
@@ -210,24 +215,22 @@ app.get('/api/workflows', async (req, res) => {
     const {
       category,
       search,
-      tag,
+  
       page = 1,
       limit = 20
     } = req.query;
     
+    // 优化后的查询：移除复杂的聚合查询，简化JOIN
     let query = `
       SELECT 
         w.*,
         wc.name as category_name,
         a.name as author_name,
-        a.avatar_url as author_avatar,
-        '{}' as tags,
-        COALESCE(array_agg(DISTINCT ws.image_url) FILTER (WHERE ws.image_url IS NOT NULL), '{}') as screenshots
+        a.avatar_url as author_avatar
       FROM workflows w
       LEFT JOIN workflow_categories wc ON w.category_id = wc.id
       LEFT JOIN authors a ON w.author_id = a.id
-      LEFT JOIN workflow_screenshots ws ON w.id = ws.workflow_id
-      WHERE 1=1
+      WHERE w.is_published = true
     `;
     
     const params = [];
@@ -247,25 +250,26 @@ app.get('/api/workflows', async (req, res) => {
       paramIndex++;
     }
     
-    // 难度筛选已移除
-    
-    query += `
-      GROUP BY w.id, wc.name, a.name, a.avatar_url
-      ORDER BY w.created_at DESC
-    `;
+    query += ` ORDER BY w.created_at DESC`;
     
     // 分页
     const offset = (page - 1) * limit;
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
     
-    const result = await client.query(query, params);
+    const result = await pool.query(query, params);
     
-    // 获取总数
+    // 为每个工作流添加空的screenshots数组（避免额外查询）
+    const workflowsWithExtras = result.rows.map(workflow => ({
+      ...workflow,
+      screenshots: [] // 暂时返回空数组，避免复杂查询
+    }));
+    
+    // 简化的总数查询
     let countQuery = `
-      SELECT COUNT(DISTINCT w.id) as total
+      SELECT COUNT(*) as total
       FROM workflows w
-      WHERE 1=1
+      WHERE w.is_published = true
     `;
     
     const countParams = [];
@@ -283,14 +287,12 @@ app.get('/api/workflows', async (req, res) => {
       countParamIndex++;
     }
     
-    // 难度筛选已移除
-    
-    const countResult = await client.query(countQuery, countParams);
+    const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
     
     res.json({
       success: true,
-      data: result.rows,
+      data: workflowsWithExtras,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -316,7 +318,7 @@ app.get('/api/workflows/:id', async (req, res) => {
     const { id } = req.params;
     
     // 获取工作流基本信息
-    const workflowResult = await client.query(`
+    const workflowResult = await pool.query(`
       SELECT 
         w.*,
         wc.name as category_name,
@@ -338,11 +340,10 @@ app.get('/api/workflows/:id', async (req, res) => {
     
     const workflow = workflowResult.rows[0];
     
-    // 获取标签 (暂时返回空数组，因为标签表不存在)
-    const tagsResult = { rows: [] };
+
     
     // 获取截图
-    const screenshotsResult = await client.query(`
+    const screenshotsResult = await pool.query(`
       SELECT image_url
       FROM workflow_screenshots
       WHERE workflow_id = $1
@@ -350,7 +351,7 @@ app.get('/api/workflows/:id', async (req, res) => {
     `, [id]);
     
     // 获取说明
-    const instructionsResult = await client.query(`
+    const instructionsResult = await pool.query(`
       SELECT instruction_text
       FROM workflow_instructions
       WHERE workflow_id = $1
@@ -362,7 +363,6 @@ app.get('/api/workflows/:id', async (req, res) => {
     // 组装完整数据
     const fullWorkflow = {
       ...workflow,
-      tags: tagsResult.rows.map(row => row.name),
       screenshots: screenshotsResult.rows.map(row => row.image_url),
       instructions: instructionsResult.rows.map(row => row.instruction_text),
       config: workflow.json_source ? (() => {
@@ -389,7 +389,7 @@ app.get('/api/workflows/:id', async (req, res) => {
 
     
     // 记录查看行为
-    await client.query(`
+    await pool.query(`
       INSERT INTO user_actions (workflow_id, action_type)
       VALUES ($1, 'view')
     `, [id]);
@@ -407,25 +407,7 @@ app.get('/api/workflows/:id', async (req, res) => {
   }
 });
 
-/**
- * 获取所有标签
- * GET /api/tags
- */
-app.get('/api/tags', async (req, res) => {
-  try {
-    // 暂时返回空数组，因为标签表不存在
-    res.json({
-      success: true,
-      data: []
-    });
-  } catch (error) {
-    console.error('获取标签失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '获取标签失败'
-    });
-  }
-});
+
 
 /**
  * 记录用户行为
@@ -448,7 +430,7 @@ app.post('/api/workflows/:id/actions', async (req, res) => {
     
     // 如果是点赞操作且提供了用户会话ID，检查是否已经点赞
     if (action_type === 'like' && user_session_id) {
-      const existingLike = await client.query(`
+      const existingLike = await pool.query(`
         SELECT id FROM user_actions 
         WHERE workflow_id = $1 AND user_session_id = $2 AND action_type = 'like'
       `, [id, user_session_id]);
@@ -463,14 +445,14 @@ app.post('/api/workflows/:id/actions', async (req, res) => {
     }
     
     // 记录用户行为
-    await client.query(`
+    await pool.query(`
       INSERT INTO user_actions (workflow_id, action_type, user_session_id, user_ip, user_agent, referrer)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [id, action_type, user_session_id, user_ip, user_agent, referrer]);
     
     // 如果是点赞，更新工作流的点赞数
     if (action_type === 'like') {
-      await client.query(`
+      await pool.query(`
         UPDATE workflows 
         SET like_count = like_count + 1
         WHERE id = $1
@@ -479,7 +461,7 @@ app.post('/api/workflows/:id/actions', async (req, res) => {
     
     // 如果是try或copy操作，更新工作流的使用数
     if (action_type === 'try' || action_type === 'copy') {
-      await client.query(`
+      await pool.query(`
         UPDATE workflows 
         SET usage_count = usage_count + 1
         WHERE id = $1
@@ -518,13 +500,13 @@ app.get('/api/stats', async (req, res) => {
     const stats = {};
     
     // 工作流总数
-    const workflowCount = await client.query(
+    const workflowCount = await pool.query(
       "SELECT COUNT(*) as count FROM workflows"
     );
     stats.totalWorkflows = parseInt(workflowCount.rows[0].count);
     
     // 分类统计
-    const categoryStats = await client.query(`
+    const categoryStats = await pool.query(`
       SELECT 
         wc.id as category_id,
         wc.name as category_name,
@@ -536,21 +518,10 @@ app.get('/api/stats', async (req, res) => {
     `);
     stats.categoryStats = categoryStats.rows;
     
-    // 热门标签
-    const popularTags = await client.query(`
-      SELECT 
-        wt.name as tag_name,
-        COUNT(wtr.workflow_id) as usage_count
-      FROM workflow_tags wt
-      LEFT JOIN workflow_tag_relations wtr ON wt.id = wtr.tag_id
-      GROUP BY wt.id, wt.name
-      ORDER BY usage_count DESC
-      LIMIT 10
-    `);
-    stats.popularTags = popularTags.rows;
+    stats.popularTags = [];
     
     // 最近活动
-    const recentActions = await client.query(`
+    const recentActions = await pool.query(`
       SELECT action_type, COUNT(*) as count
       FROM user_actions
       WHERE created_at >= NOW() - INTERVAL '7 days'
@@ -578,7 +549,7 @@ app.get('/api/stats', async (req, res) => {
  */
 app.get('/api/authors', async (req, res) => {
   try {
-    const result = await client.query(`
+    const result = await pool.query(`
       SELECT a.*,
         (SELECT COUNT(*) FROM workflows w WHERE w.author_id = a.id) as workflow_count
       FROM authors a
@@ -640,7 +611,7 @@ app.post('/api/admin/workflows', async (req, res) => {
       .replace(/-+/g, '-')
       .trim('-') + '-' + Date.now();
 
-    const result = await client.query(`
+    const result = await pool.query(`
       INSERT INTO workflows (
         id, title, description, category_id, author_id,
         thumbnail_url, demo_url,
@@ -713,7 +684,7 @@ app.put('/api/admin/workflows/:id', async (req, res) => {
       });
     }
 
-    const result = await client.query(`
+    const result = await pool.query(`
       UPDATE workflows SET
         title = $2,
         description = $3,
@@ -768,42 +739,41 @@ app.delete('/api/admin/workflows/:id', async (req, res) => {
     const { id } = req.params;
 
     // 开始事务
-    await client.query('BEGIN');
+    await pool.query('BEGIN');
 
     try {
-      // 删除相关的标签关联
-      await client.query('DELETE FROM workflow_tag_relations WHERE workflow_id = $1', [id]);
+
       
       // 删除相关的截图
-      await client.query('DELETE FROM workflow_screenshots WHERE workflow_id = $1', [id]);
+      await pool.query('DELETE FROM workflow_screenshots WHERE workflow_id = $1', [id]);
       
       // 删除相关的说明
-      await client.query('DELETE FROM workflow_instructions WHERE workflow_id = $1', [id]);
+      await pool.query('DELETE FROM workflow_instructions WHERE workflow_id = $1', [id]);
       
 
       
       // 删除用户行为记录
-      await client.query('DELETE FROM user_actions WHERE workflow_id = $1', [id]);
+      await pool.query('DELETE FROM user_actions WHERE workflow_id = $1', [id]);
       
       // 删除工作流
-      const result = await client.query('DELETE FROM workflows WHERE id = $1 RETURNING *', [id]);
+      const result = await pool.query('DELETE FROM workflows WHERE id = $1 RETURNING *', [id]);
       
       if (result.rows.length === 0) {
-        await client.query('ROLLBACK');
+        await pool.query('ROLLBACK');
         return res.status(404).json({
           success: false,
           error: '工作流不存在'
         });
       }
 
-      await client.query('COMMIT');
+      await pool.query('COMMIT');
 
       res.json({
         success: true,
         message: '工作流删除成功'
       });
     } catch (error) {
-      await client.query('ROLLBACK');
+      await pool.query('ROLLBACK');
       throw error;
     }
   } catch (error) {
@@ -815,159 +785,7 @@ app.delete('/api/admin/workflows/:id', async (req, res) => {
   }
 });
 
-/**
- * 标签管理接口
- */
 
-// 创建标签
-app.post('/api/admin/tags', async (req, res) => {
-  try {
-    const { name, color } = req.body;
-
-    if (!name || !color) {
-      return res.status(400).json({
-        success: false,
-        error: '标签名称和颜色不能为空'
-      });
-    }
-
-    // 检查标签名称是否已存在
-    const existingTag = await client.query(
-      'SELECT id FROM workflow_tags WHERE name = $1',
-      [name]
-    );
-
-    if (existingTag.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: '标签名称已存在'
-      });
-    }
-
-    const result = await client.query(
-      'INSERT INTO workflow_tags (name, color) VALUES ($1, $2) RETURNING *',
-      [name, color]
-    );
-
-    res.json({
-      success: true,
-      data: result.rows[0],
-      message: '标签创建成功'
-    });
-  } catch (error) {
-    console.error('创建标签失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '创建标签失败: ' + error.message
-    });
-  }
-});
-
-// 更新标签
-app.put('/api/admin/tags/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, color } = req.body;
-
-    if (!name || !color) {
-      return res.status(400).json({
-        success: false,
-        error: '标签名称和颜色不能为空'
-      });
-    }
-
-    // 检查标签是否存在
-    const existingTag = await client.query(
-      'SELECT id FROM workflow_tags WHERE id = $1',
-      [id]
-    );
-
-    if (existingTag.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: '标签不存在'
-      });
-    }
-
-    // 检查标签名称是否与其他标签重复
-    const duplicateTag = await client.query(
-      'SELECT id FROM workflow_tags WHERE name = $1 AND id != $2',
-      [name, id]
-    );
-
-    if (duplicateTag.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: '标签名称已存在'
-      });
-    }
-
-    const result = await client.query(
-      'UPDATE workflow_tags SET name = $1, color = $2 WHERE id = $3 RETURNING *',
-      [name, color, id]
-    );
-
-    res.json({
-      success: true,
-      data: result.rows[0],
-      message: '标签更新成功'
-    });
-  } catch (error) {
-    console.error('更新标签失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '更新标签失败: ' + error.message
-    });
-  }
-});
-
-// 删除标签
-app.delete('/api/admin/tags/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // 开始事务
-    await client.query('BEGIN');
-
-    try {
-      // 检查标签是否存在
-      const existingTag = await client.query(
-        'SELECT id FROM workflow_tags WHERE id = $1',
-        [id]
-      );
-
-      if (existingTag.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return res.status(404).json({
-          success: false,
-          error: '标签不存在'
-        });
-      }
-
-      // 删除标签关联关系
-      await client.query('DELETE FROM workflow_tag_relations WHERE tag_id = $1', [id]);
-      
-      // 删除标签
-      await client.query('DELETE FROM workflow_tags WHERE id = $1', [id]);
-
-      await client.query('COMMIT');
-
-      res.json({
-        success: true,
-        message: '标签删除成功'
-      });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    }
-  } catch (error) {
-    console.error('删除标签失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '删除标签失败: ' + error.message
-    });
-  }
-});
 
 /**
  * 分类管理接口
@@ -976,17 +794,17 @@ app.delete('/api/admin/tags/:id', async (req, res) => {
 // 创建分类
 app.post('/api/admin/categories', async (req, res) => {
   try {
-    const { id, name, icon, color, description, sort_order } = req.body;
+    const { id, name, description, sort_order } = req.body;
 
-    if (!id || !name || !icon || !color) {
+    if (!id || !name) {
       return res.status(400).json({
         success: false,
-        error: '分类ID、名称、图标和颜色不能为空'
+        error: '分类ID和名称不能为空'
       });
     }
 
     // 检查分类ID是否已存在
-    const existingCategory = await client.query(
+    const existingCategory = await pool.query(
       'SELECT id FROM workflow_categories WHERE id = $1',
       [id]
     );
@@ -999,7 +817,7 @@ app.post('/api/admin/categories', async (req, res) => {
     }
 
     // 检查分类名称是否已存在
-    const existingName = await client.query(
+    const existingName = await pool.query(
       'SELECT id FROM workflow_categories WHERE name = $1',
       [name]
     );
@@ -1014,7 +832,7 @@ app.post('/api/admin/categories', async (req, res) => {
     // 如果没有提供sort_order，自动设置为最大值+1
     let finalSortOrder = sort_order;
     if (finalSortOrder === undefined || finalSortOrder === null) {
-      const maxSortResult = await client.query(
+      const maxSortResult = await pool.query(
         'SELECT COALESCE(MAX(sort_order), 0) + 1 as next_sort_order FROM workflow_categories'
       );
       finalSortOrder = maxSortResult.rows[0].next_sort_order;
@@ -1029,9 +847,9 @@ app.post('/api/admin/categories', async (req, res) => {
       }
     }
 
-    const result = await client.query(
-      'INSERT INTO workflow_categories (id, name, icon, color, description, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [id, name, icon, color, description || null, finalSortOrder]
+    const result = await pool.query(
+      'INSERT INTO workflow_categories (id, name, description, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
+      [id, name, description || null, finalSortOrder]
     );
 
     res.json({
@@ -1052,17 +870,17 @@ app.post('/api/admin/categories', async (req, res) => {
 app.put('/api/admin/categories/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, icon, color, description, sort_order } = req.body;
+    const { name, description, sort_order } = req.body;
 
-    if (!name || !icon || !color) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        error: '分类名称、图标和颜色不能为空'
+        error: '分类名称不能为空'
       });
     }
 
     // 检查分类是否存在
-    const existingCategory = await client.query(
+    const existingCategory = await pool.query(
       'SELECT id FROM workflow_categories WHERE id = $1',
       [id]
     );
@@ -1075,7 +893,7 @@ app.put('/api/admin/categories/:id', async (req, res) => {
     }
 
     // 检查名称是否与其他分类重复
-    const duplicateName = await client.query(
+    const duplicateName = await pool.query(
       'SELECT id FROM workflow_categories WHERE name = $1 AND id != $2',
       [name, id]
     );
@@ -1099,9 +917,9 @@ app.put('/api/admin/categories/:id', async (req, res) => {
       }
     }
 
-    const result = await client.query(
-      'UPDATE workflow_categories SET name = $1, icon = $2, color = $3, description = $4, sort_order = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6 RETURNING *',
-      [name, icon, color, description || null, finalSortOrder, id]
+    const result = await pool.query(
+      'UPDATE workflow_categories SET name = $1, description = $2, sort_order = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [name, description || null, finalSortOrder, id]
     );
 
     res.json({
@@ -1124,7 +942,7 @@ app.delete('/api/admin/categories/:id', async (req, res) => {
     const { id } = req.params;
 
     // 检查分类是否存在
-    const existingCategory = await client.query(
+    const existingCategory = await pool.query(
       'SELECT id FROM workflow_categories WHERE id = $1',
       [id]
     );
@@ -1137,21 +955,21 @@ app.delete('/api/admin/categories/:id', async (req, res) => {
     }
 
     // 检查是否有工作流使用此分类
-    const workflowsUsingCategory = await client.query(
+    const workflowsUsingCategory = await pool.query(
       'SELECT COUNT(*) as count FROM workflows WHERE category_id = $1',
       [id]
     );
 
     if (parseInt(workflowsUsingCategory.rows[0].count) > 0) {
       // 将使用此分类的工作流移动到默认分类
-      await client.query(
+      await pool.query(
         'UPDATE workflows SET category_id = $1 WHERE category_id = $2',
         ['all', id]
       );
     }
 
     // 删除分类
-    await client.query(
+    await pool.query(
       'DELETE FROM workflow_categories WHERE id = $1',
       [id]
     );
@@ -1181,7 +999,7 @@ app.get('/health', (req, res) => {
 // 测试数据库连接
 app.get('/test-db', async (req, res) => {
   try {
-    const result = await client.query('SELECT NOW() as current_time');
+    const result = await pool.query('SELECT NOW() as current_time');
     res.json({
       success: true,
       data: result.rows[0],
@@ -1202,7 +1020,7 @@ app.post('/test-workflow', async (req, res) => {
     console.log('收到测试工作流请求:', req.body);
     
     const workflow_id = 'test-' + Date.now();
-    const result = await client.query(`
+    const result = await pool.query(`
       INSERT INTO workflows (
         id, title, description, category_id, author_id,
         thumbnail_url, demo_url,

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   apiClient, 
-  ApiTag, 
   ApiStats,
   transformApiWorkflowToWorkflow,
   transformApiCategoryToCategory,
@@ -33,9 +32,8 @@ export function useWorkflows(params?: {
   limit?: number;
   category?: string;
   search?: string;
-  tags?: string[];
 }) {
-  const [state, setState] = useState<ApiState<Workflow[]> & { pagination?: PaginationState }>({
+  const [state, setState] = useState<ApiState<Workflow[]> & { pagination?: PaginationState | undefined }>({
     data: null,
     loading: true,
     error: null,
@@ -53,7 +51,7 @@ export function useWorkflows(params?: {
         const typedCachedData = cachedData as { workflows: Workflow[]; pagination?: PaginationState };
         setState({
           data: typedCachedData.workflows,
-          pagination: typedCachedData.pagination,
+          pagination: typedCachedData.pagination || undefined,
           loading: false,
           error: null,
         });
@@ -92,8 +90,7 @@ export function useWorkflows(params?: {
     params?.page,
     params?.limit,
     params?.category,
-    params?.search,
-    params?.tags?.join(',') // 将数组转换为字符串避免引用比较问题
+    params?.search
   ]);
 
   useEffect(() => {
@@ -242,62 +239,7 @@ export function useCategories() {
   };
 }
 
-// 标签列表Hook
-export function useTags() {
-  const [state, setState] = useState<ApiState<ApiTag[]>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
 
-  const fetchTags = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      const cacheKey = 'tags';
-      const cachedData = apiCache.get(cacheKey);
-      
-      if (cachedData) {
-        setState({
-          data: cachedData as ApiTag[],
-          loading: false,
-          error: null,
-        });
-        return;
-      }
-
-      const response = await apiClient.getTags();
-      
-      if (response.success && response.data) {
-        // 缓存结果
-        apiCache.set(cacheKey, response.data, 5 * 60 * 1000); // 5分钟缓存
-        
-        setState({
-          data: response.data,
-          loading: false,
-          error: null,
-        });
-      } else {
-        throw new Error(response.message || '获取标签列表失败');
-      }
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: handleApiError(error),
-      }));
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTags();
-  }, [fetchTags]);
-
-  return {
-    ...state,
-    refetch: fetchTags,
-  };
-}
 
 // 统计信息Hook
 export function useStats() {

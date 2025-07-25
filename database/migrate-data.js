@@ -86,7 +86,7 @@ function loadExistingData() {
           likeCount: 89,
           demoUrl: 'https://demo.fastgpt.com/customer-service',
           shareId: 'g20squJLPzWUtIyLXr3oLfE0',
-          tags: ['AI助手', '客服', '对话'],
+    
           screenshots: [
             '/screenshots/customer-service-1.jpg',
             '/screenshots/customer-service-2.jpg'
@@ -152,7 +152,7 @@ function loadExistingData() {
           likeCount: 124,
           demoUrl: 'https://demo.fastgpt.com/claude4-assistant',
           shareId: 'claude4-demo-share-id',
-          tags: ['Claude4', 'AI助手', '高级'],
+    
           screenshots: [
             '/screenshots/claude4-1.jpg',
             '/screenshots/claude4-2.jpg'
@@ -271,25 +271,8 @@ async function migrateData() {
       
       // 工作流配置已直接存储在workflows表的json_source字段中
       
-      // 插入标签关联
-      for (const tagName of workflow.tags) {
-        // 确保标签存在
-        const tagResult = await client.query(
-          'SELECT id FROM workflow_tags WHERE name = $1',
-          [tagName]
-        );
-        
-        if (tagResult.rows.length > 0) {
-          const tagId = tagResult.rows[0].id;
-          
-          // 插入标签关联
-          await client.query(`
-            INSERT INTO workflow_tag_relations (workflow_id, tag_id)
-            VALUES ($1, $2)
-            ON CONFLICT (workflow_id, tag_id) DO NOTHING
-          `, [workflow.id, tagId]);
-        }
-      }
+      // 标签关联功能已移除（workflow_tag_relations表已删除）
+      // 标签信息现在直接存储在workflows表的json_source字段中
       
       // 插入截图
       for (let i = 0; i < workflow.screenshots.length; i++) {
@@ -321,13 +304,11 @@ async function migrateData() {
     
     // 验证迁移结果
     const workflowCount = await client.query('SELECT COUNT(*) as count FROM workflows');
-    const tagRelationCount = await client.query('SELECT COUNT(*) as count FROM workflow_tag_relations');
     const jsonSourceCount = await client.query('SELECT COUNT(*) as count FROM workflows WHERE json_source IS NOT NULL');
     
     console.log('📈 迁移结果统计:');
     console.log(`  - 工作流: ${workflowCount.rows[0].count} 条`);
     console.log(`  - 包含JSON源码: ${jsonSourceCount.rows[0].count} 条`);
-    console.log(`  - 标签关联: ${tagRelationCount.rows[0].count} 条`);
     
     console.log('\n🎉 数据迁移全部完成！');
     

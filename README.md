@@ -70,7 +70,7 @@ interface WorkflowCard {
   title: string;
   description: string;
   category: string;
-  tags: string[];
+
   thumbnail: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   usageCount: number;
@@ -102,7 +102,7 @@ interface Workflow {
   description: string;
   longDescription?: string;
   category: WorkflowCategory;
-  tags: string[];
+
   thumbnail: string;
   screenshots: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';

@@ -47,8 +47,8 @@ export const workflows: Workflow[] = [
     title: '智能客服问答系统',
     description: '基于知识库的智能客服，支持多轮对话和情感分析',
     longDescription: '这是一个完整的智能客服解决方案，集成了知识库检索、意图识别、情感分析等功能。能够处理常见的客户咨询，提供准确的回答，并在必要时转接人工客服。',
-    category: categories[1],
-    tags: ['客服', '知识库', '多轮对话', '情感分析'],
+    category: categories[1]!,
+
     thumbnail: '/workflows/customer-service.jpg',
     screenshots: ['/workflows/customer-service-1.jpg', '/workflows/customer-service-2.jpg'],
     difficulty: 'intermediate',
@@ -114,8 +114,8 @@ export const workflows: Workflow[] = [
     title: '文章自动生成器',
     description: '根据关键词和大纲自动生成高质量文章内容',
     longDescription: '强大的内容创作工具，能够根据用户提供的关键词、大纲或主题，自动生成结构清晰、内容丰富的文章。支持多种文体风格，适用于博客、新闻、营销文案等场景。',
-    category: categories[2],
-    tags: ['内容创作', '文章生成', 'SEO优化', '多风格'],
+    category: categories[2]!,
+
     thumbnail: '/workflows/content-creation.jpg',
     screenshots: ['/workflows/content-creation-1.jpg'],
     difficulty: 'beginner',
@@ -178,8 +178,8 @@ export const workflows: Workflow[] = [
     title: '数据报告分析助手',
     description: '自动分析数据并生成专业的分析报告',
     longDescription: '专业的数据分析工具，能够处理各种格式的数据文件，进行统计分析、趋势预测，并自动生成包含图表和洞察的专业报告。适用于业务分析、市场研究等场景。',
-    category: categories[3],
-    tags: ['数据分析', '报告生成', '图表可视化', '趋势预测'],
+    category: categories[3]!,
+
     thumbnail: '/workflows/data-analysis.jpg',
     screenshots: ['/workflows/data-analysis-1.jpg', '/workflows/data-analysis-2.jpg'],
     difficulty: 'advanced',
@@ -249,8 +249,8 @@ export const workflows: Workflow[] = [
     title: 'Claude4AI助手',
     description: '使用Claude4构建的AI助手',
     longDescription: '基于Claude4模型构建的智能AI助手，支持多轮对话、推理分析和文件处理。配置了最新的Claude Sonnet 4模型，具备强大的理解和生成能力，适用于各种复杂的对话场景。',
-    category: categories[1], // 客服助手
-    tags: ['Claude4', 'AI助手', '对话', '推理'],
+    category: categories[1]!, // 客服助手
+
     thumbnail: '/workflows/claude4-assistant.jpg',
     screenshots: ['/workflows/claude4-assistant-1.jpg'],
     difficulty: 'beginner',
@@ -373,6 +373,6 @@ export const searchWorkflows = (query: string): Workflow[] => {
   return workflows.filter(workflow => 
     workflow.title.toLowerCase().includes(lowercaseQuery) ||
     workflow.description.toLowerCase().includes(lowercaseQuery) ||
-    workflow.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery))
+    false // 移除标签搜索功能
   );
 };

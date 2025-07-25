@@ -23,7 +23,7 @@ export interface ApiWorkflow {
   long_description?: string;
   category_id: string;
   category_name: string;
-  tags: string[];
+
   thumbnail_url?: string;
   screenshots?: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
@@ -49,11 +49,7 @@ export interface ApiCategory {
   workflow_count?: number;
 }
 
-export interface ApiTag {
-  id: string;
-  name: string;
-  usage_count: number;
-}
+
 
 export interface ApiStats {
   total_workflows: number;
@@ -62,11 +58,7 @@ export interface ApiStats {
     category_name: string;
     workflow_count: number;
   }>;
-  popular_tags: Array<{
-    tag_id: string;
-    tag_name: string;
-    usage_count: number;
-  }>;
+
   recent_activities: Array<{
     action_type: string;
     count: number;
@@ -113,7 +105,6 @@ class ApiClient {
     limit?: number;
     category?: string;
     search?: string;
-    tags?: string[];
   }): Promise<ApiResponse<ApiWorkflow[]>> {
     const searchParams = new URLSearchParams();
     
@@ -121,9 +112,6 @@ class ApiClient {
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.category && params.category !== 'all') searchParams.append('category', params.category);
     if (params?.search) searchParams.append('search', params.search);
-    if (params?.tags?.length) {
-      params.tags.forEach(tag => searchParams.append('tags', tag));
-    }
 
     const queryString = searchParams.toString();
     const endpoint = `/api/workflows${queryString ? `?${queryString}` : ''}`;
@@ -136,10 +124,7 @@ class ApiClient {
     return this.request<ApiWorkflow>(`/api/workflows/${id}`);
   }
 
-  // 获取标签列表
-  async getTags(): Promise<ApiResponse<ApiTag[]>> {
-    return this.request<ApiTag[]>('/api/tags');
-  }
+
 
   // 获取统计信息
   async getStats(): Promise<ApiResponse<ApiStats>> {
@@ -177,10 +162,8 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
     category: {
       id: apiWorkflow.category_id,
       name: apiWorkflow.category_name,
-      icon: getCategoryIcon(apiWorkflow.category_id),
-      color: getCategoryColor(apiWorkflow.category_id),
     },
-    tags: apiWorkflow.tags,
+
     thumbnail: apiWorkflow.thumbnail_url || '/workflows/default.jpg',
     screenshots: apiWorkflow.screenshots || [],
     difficulty: apiWorkflow.difficulty,
@@ -194,10 +177,10 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
       avatar: apiWorkflow.author_avatar || '/avatars/default.jpg',
     },
     config: transformedConfig,
-    demoUrl: apiWorkflow.demo_url,
+    ...(apiWorkflow.demo_url && { demoUrl: apiWorkflow.demo_url }),
     instructions: apiWorkflow.instructions || [],
     requirements: apiWorkflow.requirements || [],
-    is_featured: apiWorkflow.is_featured,
+    ...(apiWorkflow.is_featured !== undefined && { is_featured: apiWorkflow.is_featured }),
   };
 }
 
@@ -205,38 +188,10 @@ export function transformApiCategoryToCategory(apiCategory: ApiCategory): import
   return {
     id: apiCategory.id,
     name: apiCategory.name,
-    icon: apiCategory.icon || getCategoryIcon(apiCategory.id),
-    color: apiCategory.color || getCategoryColor(apiCategory.id),
   };
 }
 
-// 辅助函数 - 根据分类ID获取图标
-function getCategoryIcon(categoryId: string): string {
-  const iconMap: Record<string, string> = {
-    'all': 'Grid3X3',
-    'customer-service': 'MessageCircle',
-    'content-creation': 'PenTool',
-    'data-analysis': 'BarChart3',
-    'automation': 'Zap',
-    'education': 'GraduationCap',
-    'business': 'Briefcase',
-  };
-  return iconMap[categoryId] || 'Grid3X3';
-}
 
-// 辅助函数 - 根据分类ID获取颜色
-function getCategoryColor(categoryId: string): string {
-  const colorMap: Record<string, string> = {
-    'all': '#6b7280',
-    'customer-service': '#3b82f6',
-    'content-creation': '#8b5cf6',
-    'data-analysis': '#10b981',
-    'automation': '#f59e0b',
-    'education': '#ef4444',
-    'business': '#06b6d4',
-  };
-  return colorMap[categoryId] || '#6b7280';
-}
 
 // 错误处理辅助函数
 export function handleApiError(error: unknown): string {

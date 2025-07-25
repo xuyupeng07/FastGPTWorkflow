@@ -67,7 +67,7 @@ GET /api/workflows
 **查询参数**:
 - `category` (string): 分类ID，"all"表示所有分类
 - `search` (string): 搜索关键词
-- `tag` (string): 标签筛选
+
 - `difficulty` (string): 难度筛选 (beginner|intermediate|advanced)
 - `page` (number): 页码，默认1
 - `limit` (number): 每页数量，默认20
@@ -103,7 +103,7 @@ GET /api/workflows?category=customer-service&page=1&limit=10
       "created_at": "2024-01-01T00:00:00.000Z",
       "updated_at": "2024-01-01T00:00:00.000Z",
       "published_at": "2024-01-01T00:00:00.000Z",
-      "tags": ["AI助手", "客服", "对话"],
+  
       "screenshots": ["/screenshots/customer-service-1.jpg"]
     }
   ],
@@ -147,7 +147,7 @@ GET /api/workflows/:id
     "nodes_count": 5,
     "edges_count": 4,
     "variables_count": 3,
-    "tags": ["AI助手", "客服", "对话"],
+    
     "screenshots": ["/screenshots/customer-service-1.jpg"],
     "instructions": [
       "1. 配置知识库，上传常见问题和答案",
@@ -161,28 +161,7 @@ GET /api/workflows/:id
 }
 ```
 
-### 3. 标签管理
 
-#### 获取所有标签
-
-```http
-GET /api/tags
-```
-
-**响应示例**:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "AI助手",
-      "color": "#3b82f6",
-      "usage_count": 25
-    }
-  ]
-}
-```
 
 ### 4. 用户行为
 
@@ -230,12 +209,7 @@ GET /api/stats
         "workflow_count": 15
       }
     ],
-    "popularTags": [
-      {
-        "tag_name": "AI助手",
-        "usage_count": 25
-      }
-    ],
+
     "recentActions": [
       {
         "action_type": "view",
@@ -332,16 +306,7 @@ interface Category {
 }
 ```
 
-### 标签 (Tag)
 
-```typescript
-interface Tag {
-  id: number;
-  name: string;
-  color?: string;
-  description?: string;
-}
-```
 
 ## 使用示例
 

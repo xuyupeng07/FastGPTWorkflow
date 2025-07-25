@@ -105,13 +105,14 @@ export function WorkflowExperience({ workflow, isOpen, onClose }: WorkflowExperi
     };
 
     const categoryId = typeof workflow.category === 'object' ? workflow.category.id : workflow.category;
-    const categoryResponses = responses[categoryId as keyof typeof responses] || [
+    const defaultResponses = [
       '我正在处理您的请求...',
       '让我为您提供专业的解答...',
       '基于工作流配置，我来为您解决这个问题...'
     ];
+    const categoryResponses = responses[categoryId as keyof typeof responses] || defaultResponses;
 
-    return categoryResponses[Math.floor(Math.random() * categoryResponses.length)];
+    return categoryResponses[Math.floor(Math.random() * categoryResponses.length)]!;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

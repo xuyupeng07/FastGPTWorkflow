@@ -12,8 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Eye, Search, Filter, Heart, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import AdminLogin from '@/components/AdminLogin';
 
 interface Workflow {
   id: string;
@@ -26,21 +28,18 @@ interface Workflow {
   thumbnail_url: string;
   usage_count: number;
   like_count: number;
-  view_count: number;
   demo_url?: string;
   is_featured: boolean;
   is_published: boolean;
   created_at: string;
   updated_at: string;
-  tags: string[];
+
   json_source?: string;
 }
 
 interface Category {
   id: string;
   name: string;
-  icon: string;
-  color: string;
   description?: string;
   workflow_count: number;
   sort_order?: number;
@@ -61,7 +60,8 @@ interface Author {
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
-export default function AdminPage() {
+function AdminContent() {
+  const { logout } = useAuth();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -111,8 +111,6 @@ export default function AdminPage() {
   const [categoryFormData, setCategoryFormData] = useState({
     id: '',
     name: '',
-    icon: 'Grid3X3',
-    color: '#6b7280',
     description: '',
     sort_order: 0
   });
@@ -407,8 +405,6 @@ export default function AdminPage() {
     setCategoryFormData({
       id: '',
       name: '',
-      icon: 'Grid3X3',
-      color: '#6b7280',
       description: '',
       sort_order: 0
     });
@@ -425,14 +421,7 @@ export default function AdminPage() {
       toast.error('请输入分类名称');
       return;
     }
-    if (!categoryFormData.icon.trim()) {
-      toast.error('请输入分类图标');
-      return;
-    }
-    if (!categoryFormData.color.trim()) {
-      toast.error('请输入分类颜色');
-      return;
-    }
+
 
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories`, {
@@ -467,14 +456,7 @@ export default function AdminPage() {
       toast.error('请输入分类名称');
       return;
     }
-    if (!categoryFormData.icon.trim()) {
-      toast.error('请输入分类图标');
-      return;
-    }
-    if (!categoryFormData.color.trim()) {
-      toast.error('请输入分类颜色');
-      return;
-    }
+
 
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories/${editingCategory.id}`, {
@@ -529,8 +511,6 @@ export default function AdminPage() {
     setCategoryFormData({
       id: category.id,
       name: category.name,
-      icon: category.icon,
-      color: category.color,
       description: category.description || '',
       sort_order: category.sort_order || 0
     });
@@ -543,17 +523,145 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">加载中...</div>
+      <div className="container mx-auto p-6">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">工作流管理后台</h1>
+            <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={logout}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            登出
+          </Button>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="workflows">工作流管理</TabsTrigger>
+            <TabsTrigger value="categories">分类管理</TabsTrigger>
+            <TabsTrigger value="authors">作者管理</TabsTrigger>
+            <TabsTrigger value="stats">统计信息</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="workflows" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>工作流列表</CardTitle>
+                <CardDescription>管理所有工作流卡片</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="搜索工作流..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                        disabled
+                      />
+                    </div>
+                  </div>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled>
+                    <SelectTrigger className="w-48">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="选择分类" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">所有分类</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button disabled>
+                    <Plus className="h-4 w-4 mr-2" />
+                    新建工作流
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <div className="text-lg text-gray-600">正在加载工作流数据...</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="categories" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>分类管理</CardTitle>
+                <CardDescription>管理工作流分类</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <div className="text-lg text-gray-600">正在加载分类数据...</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="authors" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>作者管理</CardTitle>
+                <CardDescription>管理工作流作者</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <div className="text-lg text-gray-600">正在加载作者数据...</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="stats" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>统计信息</CardTitle>
+                <CardDescription>查看系统统计数据</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <div className="text-lg text-gray-600">正在加载统计数据...</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">工作流管理后台</h1>
-        <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">工作流管理后台</h1>
+          <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={logout}
+          className="flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          登出
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -830,13 +938,6 @@ export default function AdminPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(`/workflow/${workflow.id}`, '_blank')}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
                               onClick={() => handleEdit(workflow)}
                             >
                               <Edit className="h-4 w-4" />
@@ -914,8 +1015,6 @@ export default function AdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>分类</TableHead>
-                      <TableHead>颜色</TableHead>
-                      <TableHead>图标</TableHead>
                       <TableHead>描述</TableHead>
                       <TableHead>工作流数量</TableHead>
                       <TableHead>操作</TableHead>
@@ -925,16 +1024,6 @@ export default function AdminPage() {
                     {categories.map((category) => (
                       <TableRow key={category.id}>
                         <TableCell className="font-medium">{category.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className="w-4 h-4 rounded"
-                              style={{ backgroundColor: category.color }}
-                            />
-                            <span className="text-sm text-gray-500">{category.color}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{category.icon}</TableCell>
                         <TableCell className="max-w-xs truncate">
                           {category.description || '-'}
                         </TableCell>
@@ -1046,16 +1135,7 @@ export default function AdminPage() {
                 <div className="text-2xl font-bold">{workflows.length}</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">总浏览量</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {workflows.reduce((sum, w) => sum + w.view_count, 0)}
-                </div>
-              </CardContent>
-            </Card>
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">总点赞数</CardTitle>
@@ -1273,33 +1353,7 @@ export default function AdminPage() {
                 placeholder="例如: 数据分析"
               />
             </div>
-            <div>
-              <Label htmlFor="category-icon">图标</Label>
-              <Input
-                id="category-icon"
-                value={categoryFormData.icon}
-                onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
-                placeholder="例如: BarChart3"
-              />
-            </div>
-            <div>
-              <Label htmlFor="category-color">颜色</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="category-color"
-                  type="color"
-                  value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                  className="w-16 h-10"
-                />
-                <Input
-                  value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                  placeholder="#6b7280"
-                  className="flex-1"
-                />
-              </div>
-            </div>
+
             <div>
               <Label htmlFor="category-description">描述</Label>
               <Input
@@ -1350,33 +1404,7 @@ export default function AdminPage() {
                 placeholder="例如: 数据分析"
               />
             </div>
-            <div>
-              <Label htmlFor="edit-category-icon">图标</Label>
-              <Input
-                id="edit-category-icon"
-                value={categoryFormData.icon}
-                onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
-                placeholder="例如: BarChart3"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-category-color">颜色</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="edit-category-color"
-                  type="color"
-                  value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                  className="w-16 h-10"
-                />
-                <Input
-                  value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                  placeholder="#6b7280"
-                  className="flex-1"
-                />
-              </div>
-            </div>
+
             <div>
               <Label htmlFor="edit-category-description">描述</Label>
               <Input
@@ -1399,4 +1427,51 @@ export default function AdminPage() {
       </Dialog>
     </div>
   );
+}
+
+export default function AdminPage() {
+  return (
+    <AuthProvider>
+      <AdminPageWithAuth />
+    </AuthProvider>
+  );
+}
+
+function AdminPageWithAuth() {
+  const { isAuthenticated, login, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <Lock className="mx-auto h-12 w-12 text-gray-400" />
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              管理员后台
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              正在验证身份信息...
+            </p>
+          </div>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                  <div className="text-lg text-gray-600">加载中...</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={login} />;
+  }
+
+  return <AdminContent />;
 }

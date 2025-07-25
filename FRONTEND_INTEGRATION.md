@@ -22,7 +22,7 @@
   - `useWorkflows` - 工作流列表数据
   - `useWorkflow` - 单个工作流详情
   - `useCategories` - 分类数据
-  - `useTags` - 标签数据
+  
   - `useStats` - 统计信息
   - `useUserActions` - 用户行为记录
   - `useSearch` - 搜索功能
@@ -83,7 +83,7 @@
 │  ├── GET /api/categories - 分类列表                         │
 │  ├── GET /api/workflows - 工作流列表                        │
 │  ├── GET /api/workflows/:id - 工作流详情                    │
-│  ├── GET /api/tags - 标签列表                               │
+
 │  ├── GET /api/stats - 统计信息                              │
 │  └── POST /api/workflows/:id/actions - 用户行为             │
 └─────────────────────────────────────────────────────────────┘
@@ -95,7 +95,7 @@
 │  数据表                                                      │
 │  ├── workflows - 工作流主表                                 │
 │  ├── workflow_categories - 分类表                           │
-│  ├── workflow_tags - 标签表                                 │
+
 │  ├── workflow_configs - 配置表                              │
 │  ├── user_actions - 用户行为表                              │
 │  └── 其他关联表                                              │
