@@ -9,7 +9,6 @@ export interface WorkflowCard {
   thumbnail: string;
   usageCount: number;
   createdAt: string;
-  estimatedTime: string;
   json_source?: string;
 }
 
@@ -112,7 +111,6 @@ export interface Workflow {
   thumbnail: string;
   screenshots: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTime: string;
   usageCount: number;
   likeCount: number;
   createdAt: string;

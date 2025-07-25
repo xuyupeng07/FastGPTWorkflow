@@ -81,12 +81,10 @@ async function initializeDatabase() {
     // 验证初始数据
     const categoriesResult = await client.query('SELECT COUNT(*) as count FROM workflow_categories');
     const authorsResult = await client.query('SELECT COUNT(*) as count FROM authors');
-    const tagsResult = await client.query('SELECT COUNT(*) as count FROM workflow_tags');
     
     console.log('📈 初始数据统计:');
     console.log(`  - 工作流分类: ${categoriesResult.rows[0].count} 条`);
     console.log(`  - 作者: ${authorsResult.rows[0].count} 条`);
-    console.log(`  - 标签: ${tagsResult.rows[0].count} 条`);
     
     console.log('\n🎉 数据库初始化全部完成！');
     console.log('\n📝 接下来可以:');

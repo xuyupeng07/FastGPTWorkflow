@@ -273,7 +273,7 @@ export default function WorkflowDetailPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span>预计 {workflow.estimatedTime} 分钟</span>
+      
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4" />

@@ -75,7 +75,7 @@ interface WorkflowCard {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   usageCount: number;
   createdAt: string;
-  estimatedTime: string;
+
 }
 ```
 
@@ -106,7 +106,7 @@ interface Workflow {
   thumbnail: string;
   screenshots: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTime: string;
+
   usageCount: number;
   likeCount: number;
   createdAt: string;

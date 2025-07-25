@@ -27,7 +27,7 @@ export interface ApiWorkflow {
   thumbnail_url?: string;
   screenshots?: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimated_time?: string;
+
   usage_count: number;
   like_count: number;
   created_at: string;
@@ -184,7 +184,7 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
     thumbnail: apiWorkflow.thumbnail_url || '/workflows/default.jpg',
     screenshots: apiWorkflow.screenshots || [],
     difficulty: apiWorkflow.difficulty,
-    estimatedTime: apiWorkflow.estimated_time || '未知',
+
     usageCount: apiWorkflow.usage_count,
     likeCount: apiWorkflow.like_count,
     createdAt: apiWorkflow.created_at,

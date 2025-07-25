@@ -37,38 +37,21 @@ CREATE TABLE IF NOT EXISTS workflows (
     id VARCHAR(50) PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     description TEXT NOT NULL,
-    long_description TEXT,
     category_id VARCHAR(50) NOT NULL REFERENCES workflow_categories(id),
     author_id INTEGER NOT NULL REFERENCES authors(id),
     thumbnail_url TEXT NOT NULL,
-    estimated_time VARCHAR(50) NOT NULL,
     usage_count INTEGER DEFAULT 0,
     like_count INTEGER DEFAULT 0,
-    view_count INTEGER DEFAULT 0,
     demo_url TEXT,
-    share_id VARCHAR(100) UNIQUE,
     is_featured BOOLEAN DEFAULT false,
     is_published BOOLEAN DEFAULT true,
-    version VARCHAR(20) DEFAULT '1.0',
     json_source TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMP
 );
 
--- 4. 工作流配置表
-CREATE TABLE IF NOT EXISTS workflow_configs (
-    id SERIAL PRIMARY KEY,
-    workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-    config_json JSONB NOT NULL,
-    nodes_count INTEGER NOT NULL,
-    edges_count INTEGER NOT NULL,
-    variables_count INTEGER NOT NULL,
-    config_version VARCHAR(20) DEFAULT '1.0',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(workflow_id)
-);
+-- 4. 工作流配置表已删除（API中未使用）
 
 
 
@@ -119,7 +102,6 @@ CREATE INDEX IF NOT EXISTS idx_workflows_featured ON workflows(is_featured);
 CREATE INDEX IF NOT EXISTS idx_workflows_usage ON workflows(usage_count DESC);
 CREATE INDEX IF NOT EXISTS idx_workflows_likes ON workflows(like_count DESC);
 CREATE INDEX IF NOT EXISTS idx_workflows_created ON workflows(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_workflows_share_id ON workflows(share_id);
 
 -- 全文搜索索引
 CREATE INDEX IF NOT EXISTS idx_workflows_search ON workflows USING gin(to_tsvector('english', title || ' ' || description));
@@ -132,8 +114,7 @@ CREATE INDEX IF NOT EXISTS idx_user_actions_time ON user_actions(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_actions_ip ON user_actions(user_ip);
 CREATE INDEX IF NOT EXISTS idx_user_actions_session ON user_actions(user_session_id);
 
--- 配置表索引
-CREATE INDEX IF NOT EXISTS idx_workflow_configs_workflow ON workflow_configs(workflow_id);
+-- 配置表索引已删除（表已删除）
 
 -- 截图表索引
 CREATE INDEX IF NOT EXISTS idx_screenshots_workflow ON workflow_screenshots(workflow_id, sort_order);
@@ -200,11 +181,7 @@ CREATE TRIGGER update_workflows_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_workflow_configs_updated_at ON workflow_configs;
-CREATE TRIGGER update_workflow_configs_updated_at
-    BEFORE UPDATE ON workflow_configs
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+-- workflow_configs表触发器已删除（表已删除）
 
 -- 创建视图：工作流详情视图
 CREATE OR REPLACE VIEW workflow_details AS
@@ -212,17 +189,12 @@ SELECT
     w.id,
     w.title,
     w.description,
-    w.long_description,
     w.thumbnail_url,
-    w.estimated_time,
     w.usage_count,
     w.like_count,
-    w.view_count,
     w.demo_url,
-    w.share_id,
     w.is_featured,
     w.is_published,
-    w.version,
     w.created_at,
     w.updated_at,
     w.published_at,
@@ -233,24 +205,10 @@ SELECT
     -- 作者信息
     a.name as author_name,
     a.avatar_url as author_avatar,
-    a.is_verified as author_verified,
-    -- 配置信息
-    wc.nodes_count,
-    wc.edges_count,
-    wc.variables_count,
-    wc.config_json,
+    a.is_verified as author_verified
 FROM workflows w
 LEFT JOIN workflow_categories c ON w.category_id = c.id
-LEFT JOIN authors a ON w.author_id = a.id
-LEFT JOIN workflow_configs wc ON w.id = wc.workflow_id
-GROUP BY 
-    w.id, w.title, w.description, w.long_description, w.thumbnail_url,
-    w.estimated_time, w.usage_count, w.like_count, w.view_count,
-    w.demo_url, w.share_id, w.is_featured, w.is_published, w.version,
-    w.created_at, w.updated_at, w.published_at,
-    c.name, c.icon, c.color,
-    a.name, a.avatar_url, a.is_verified,
-    wc.nodes_count, wc.edges_count, wc.variables_count, wc.config_json;
+LEFT JOIN authors a ON w.author_id = a.id;
 
 -- 创建统计视图：分类统计
 CREATE OR REPLACE VIEW category_stats AS
@@ -261,8 +219,7 @@ SELECT
     c.color,
     COUNT(w.id) as workflow_count,
     COALESCE(SUM(w.usage_count), 0) as total_usage,
-    COALESCE(SUM(w.like_count), 0) as total_likes,
-    COALESCE(SUM(w.view_count), 0) as total_views
+    COALESCE(SUM(w.like_count), 0) as total_likes
 FROM workflow_categories c
 LEFT JOIN workflows w ON c.id = w.category_id AND w.is_published = true
 WHERE c.is_active = true
@@ -287,8 +244,6 @@ BEGIN
     
     -- 更新工作流统计
     CASE p_action_type
-        WHEN 'view' THEN
-            UPDATE workflows SET view_count = view_count + 1 WHERE id = p_workflow_id;
         WHEN 'like' THEN
             UPDATE workflows SET like_count = like_count + 1 WHERE id = p_workflow_id;
         WHEN 'copy', 'try' THEN
@@ -301,8 +256,6 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION search_workflows(
     p_query TEXT DEFAULT NULL,
     p_category_id VARCHAR(50) DEFAULT NULL,
-
-
     p_limit INTEGER DEFAULT 20,
     p_offset INTEGER DEFAULT 0,
     p_sort_by VARCHAR(20) DEFAULT 'newest'
@@ -312,7 +265,6 @@ RETURNS TABLE(
     title VARCHAR(200),
     description TEXT,
     category_name VARCHAR(100),
-
     usage_count INTEGER,
     like_count INTEGER,
     created_at TIMESTAMP,
@@ -320,7 +272,6 @@ RETURNS TABLE(
 ) AS $$
 DECLARE
     query_sql TEXT;
-    count_sql TEXT;
     where_conditions TEXT[] := ARRAY[]::TEXT[];
     order_clause TEXT;
 BEGIN
@@ -333,10 +284,6 @@ BEGIN
     IF p_category_id IS NOT NULL AND p_category_id != 'all' THEN
         where_conditions := array_append(where_conditions, 'w.category_id = ''' || p_category_id || '''');
     END IF;
-    
-
-    
-
     
     -- 添加基本条件
     where_conditions := array_append(where_conditions, 'w.is_published = true');
@@ -352,7 +299,7 @@ BEGIN
     -- 构建完整查询
     query_sql := '
         SELECT w.id, w.title, w.description, c.name as category_name, 
-               w.difficulty, w.usage_count, w.like_count, w.created_at,
+               w.usage_count, w.like_count, w.created_at,
                COUNT(*) OVER() as total_count
         FROM workflows w
         LEFT JOIN workflow_categories c ON w.category_id = c.id

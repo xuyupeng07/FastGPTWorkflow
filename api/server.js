@@ -26,7 +26,7 @@ const client = new Client({
 
 // 中间件配置 - 必须在API端点之前
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
   credentials: true
 }));
 app.use(express.json());
@@ -221,13 +221,11 @@ app.get('/api/workflows', async (req, res) => {
         wc.name as category_name,
         a.name as author_name,
         a.avatar_url as author_avatar,
-        COALESCE(array_agg(DISTINCT wt.name) FILTER (WHERE wt.name IS NOT NULL), '{}') as tags,
+        '{}' as tags,
         COALESCE(array_agg(DISTINCT ws.image_url) FILTER (WHERE ws.image_url IS NOT NULL), '{}') as screenshots
       FROM workflows w
       LEFT JOIN workflow_categories wc ON w.category_id = wc.id
       LEFT JOIN authors a ON w.author_id = a.id
-      LEFT JOIN workflow_tag_relations wtr ON w.id = wtr.workflow_id
-      LEFT JOIN workflow_tags wt ON wtr.tag_id = wt.id
       LEFT JOIN workflow_screenshots ws ON w.id = ws.workflow_id
       WHERE 1=1
     `;
@@ -267,8 +265,6 @@ app.get('/api/workflows', async (req, res) => {
     let countQuery = `
       SELECT COUNT(DISTINCT w.id) as total
       FROM workflows w
-      LEFT JOIN workflow_tag_relations wtr ON w.id = wtr.workflow_id
-      LEFT JOIN workflow_tags wt ON wtr.tag_id = wt.id
       WHERE 1=1
     `;
     
@@ -342,14 +338,8 @@ app.get('/api/workflows/:id', async (req, res) => {
     
     const workflow = workflowResult.rows[0];
     
-    // 获取标签
-    const tagsResult = await client.query(`
-      SELECT wt.name
-      FROM workflow_tag_relations wtr
-      JOIN workflow_tags wt ON wtr.tag_id = wt.id
-      WHERE wtr.workflow_id = $1
-      ORDER BY wt.name
-    `, [id]);
+    // 获取标签 (暂时返回空数组，因为标签表不存在)
+    const tagsResult = { rows: [] };
     
     // 获取截图
     const screenshotsResult = await client.query(`
@@ -423,16 +413,10 @@ app.get('/api/workflows/:id', async (req, res) => {
  */
 app.get('/api/tags', async (req, res) => {
   try {
-    const result = await client.query(`
-      SELECT wt.*,
-        (SELECT COUNT(*) FROM workflow_tag_relations wtr WHERE wtr.tag_id = wt.id) as usage_count
-      FROM workflow_tags wt
-      ORDER BY (SELECT COUNT(*) FROM workflow_tag_relations wtr WHERE wtr.tag_id = wt.id) DESC, wt.name
-    `);
-    
+    // 暂时返回空数组，因为标签表不存在
     res.json({
       success: true,
-      data: result.rows
+      data: []
     });
   } catch (error) {
     console.error('获取标签失败:', error);
@@ -660,11 +644,9 @@ app.post('/api/admin/workflows', async (req, res) => {
       INSERT INTO workflows (
         id, title, description, category_id, author_id,
         thumbnail_url, demo_url,
-        is_featured, is_published, json_source, created_at, updated_at, published_at
+        is_featured, is_published, json_source
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
-        CASE WHEN $9 = true THEN CURRENT_TIMESTAMP ELSE NULL END
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
       ) RETURNING *
     `, [
       workflow_id, title, description, category_id, authorIdInt,
@@ -679,6 +661,12 @@ app.post('/api/admin/workflows', async (req, res) => {
     });
   } catch (error) {
     console.error('创建工作流失败:', error);
+    console.error('错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
     res.status(500).json({
       success: false,
       error: '创建工作流失败: ' + error.message
@@ -700,7 +688,6 @@ app.put('/api/admin/workflows/:id', async (req, res) => {
       category_id,
       author_id,
       thumbnail_url,
-      estimated_time,
       demo_url,
       share_id,
       is_featured,
@@ -1191,12 +1178,77 @@ app.get('/health', (req, res) => {
   });
 });
 
+// 测试数据库连接
+app.get('/test-db', async (req, res) => {
+  try {
+    const result = await client.query('SELECT NOW() as current_time');
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '数据库连接正常'
+    });
+  } catch (error) {
+    console.error('数据库测试失败:', error);
+    res.status(500).json({
+      success: false,
+      error: '数据库连接失败: ' + error.message
+    });
+  }
+});
+
+// 测试创建工作流（简化版）
+app.post('/test-workflow', async (req, res) => {
+  try {
+    console.log('收到测试工作流请求:', req.body);
+    
+    const workflow_id = 'test-' + Date.now();
+    const result = await client.query(`
+      INSERT INTO workflows (
+        id, title, description, category_id, author_id,
+        thumbnail_url, demo_url,
+        is_featured, is_published, json_source
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+      ) RETURNING *
+    `, [
+      workflow_id, '测试工作流', '测试描述', 'customer-service', 1,
+      'https://example.com/test.jpg', null,
+      false, true, null
+    ]);
+    
+    console.log('工作流创建成功:', result.rows[0]);
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: '测试工作流创建成功'
+    });
+  } catch (error) {
+    console.error('测试工作流创建失败:', error);
+    console.error('错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({
+      success: false,
+      error: '测试工作流创建失败: ' + error.message
+    });
+  }
+});
+
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error('服务器错误:', err);
+  console.error('错误详情:', {
+    message: err.message,
+    stack: err.stack,
+    code: err.code,
+    detail: err.detail
+  });
   res.status(500).json({
     success: false,
-    error: '服务器内部错误'
+    error: '服务器内部错误: ' + err.message
   });
 });
 

@@ -52,7 +52,7 @@ export const workflows: Workflow[] = [
     thumbnail: '/workflows/customer-service.jpg',
     screenshots: ['/workflows/customer-service-1.jpg', '/workflows/customer-service-2.jpg'],
     difficulty: 'intermediate',
-    estimatedTime: '30分钟',
+
     usageCount: 1250,
     likeCount: 89,
     createdAt: '2024-01-15',
@@ -119,7 +119,7 @@ export const workflows: Workflow[] = [
     thumbnail: '/workflows/content-creation.jpg',
     screenshots: ['/workflows/content-creation-1.jpg'],
     difficulty: 'beginner',
-    estimatedTime: '15分钟',
+
     usageCount: 2100,
     likeCount: 156,
     createdAt: '2024-01-10',
@@ -183,7 +183,7 @@ export const workflows: Workflow[] = [
     thumbnail: '/workflows/data-analysis.jpg',
     screenshots: ['/workflows/data-analysis-1.jpg', '/workflows/data-analysis-2.jpg'],
     difficulty: 'advanced',
-    estimatedTime: '45分钟',
+
     usageCount: 890,
     likeCount: 67,
     createdAt: '2024-01-08',
@@ -254,7 +254,7 @@ export const workflows: Workflow[] = [
     thumbnail: '/workflows/claude4-assistant.jpg',
     screenshots: ['/workflows/claude4-assistant-1.jpg'],
     difficulty: 'beginner',
-    estimatedTime: '5分钟',
+
     usageCount: 1250,
     likeCount: 89,
     createdAt: '2024-01-15',
