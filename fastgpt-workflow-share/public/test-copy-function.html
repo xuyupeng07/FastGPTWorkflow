@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复制功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .config-preview {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 复制功能诊断工具</h1>
+        <p>这个工具将帮助诊断工作流复制功能的问题</p>
+        
+        <div class="test-section">
+            <h3>1. 浏览器兼容性检查</h3>
+            <div id="browser-check"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. API连接测试</h3>
+            <button onclick="testApiConnection()">测试API连接</button>
+            <div id="api-status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 工作流数据加载</h3>
+            <button onclick="loadWorkflowData()">加载工作流数据</button>
+            <div id="workflow-status"></div>
+            <div class="stats" id="workflow-stats" style="display: none;"></div>
+            <div class="config-preview" id="config-preview" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 复制功能测试</h3>
+            <button onclick="testCopyFunction()" id="copy-btn" disabled>测试复制功能</button>
+            <div id="copy-status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 实际页面测试</h3>
+            <p>如果上述测试都通过，请访问实际的工作流页面进行测试：</p>
+            <a href="/workflow/claude4-assistant" target="_blank" style="color: #007bff; text-decoration: none;">📋 打开工作流详情页面</a>
+        </div>
+    </div>
+
+    <script>
+        let workflowData = null;
+        
+        // 1. 浏览器兼容性检查
+        function checkBrowserCompatibility() {
+            const checks = [
+                {
+                    name: 'Clipboard API',
+                    test: () => navigator.clipboard && navigator.clipboard.writeText,
+                    required: true
+                },
+                {
+                    name: 'Fetch API',
+                    test: () => typeof fetch !== 'undefined',
+                    required: true
+                },
+                {
+                    name: 'Promise支持',
+                    test: () => typeof Promise !== 'undefined',
+                    required: true
+                },
+                {
+                    name: 'HTTPS环境',
+                    test: () => location.protocol === 'https:' || location.hostname === 'localhost',
+                    required: false
+                }
+            ];
+            
+            const container = document.getElementById('browser-check');
+            let allPassed = true;
+            
+            checks.forEach(check => {
+                const passed = check.test();
+                if (check.required && !passed) allPassed = false;
+                
+                const status = document.createElement('div');
+                status.className = `status ${passed ? 'success' : 'error'}`;
+                status.innerHTML = `${check.name}: ${passed ? '✅ 支持' : '❌ 不支持'}${check.required ? ' (必需)' : ' (可选)'}`;
+                container.appendChild(status);
+            });
+            
+            if (allPassed) {
+                const success = document.createElement('div');
+                success.className = 'status success';
+                success.innerHTML = '🎉 浏览器兼容性检查通过！';
+                container.appendChild(success);
+            }
+            
+            return allPassed;
+        }
+        
+        // 2. API连接测试
+        async function testApiConnection() {
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.innerHTML = '<div class="status info">🔄 正在测试API连接...</div>';
+            
+            try {
+                const response = await fetch('/api/workflows/claude4-assistant');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = `
+                        <div class="status success">✅ API连接成功</div>
+                        <div class="status info">状态码: ${response.status}</div>
+                        <div class="status info">响应成功: ${data.success}</div>
+                    `;
+                    return true;
+                } else {
+                    statusDiv.innerHTML = `<div class="status error">❌ API连接失败 - 状态码: ${response.status}</div>`;
+                    return false;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ API连接错误: ${error.message}</div>`;
+                return false;
+            }
+        }
+        
+        // 3. 工作流数据加载
+        async function loadWorkflowData() {
+            const statusDiv = document.getElementById('workflow-status');
+            const statsDiv = document.getElementById('workflow-stats');
+            const previewDiv = document.getElementById('config-preview');
+            const copyBtn = document.getElementById('copy-btn');
+            
+            statusDiv.innerHTML = '<div class="status info">🔄 正在加载工作流数据...</div>';
+            
+            try {
+                const response = await fetch('/api/workflows/claude4-assistant');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    workflowData = result.data;
+                    const config = workflowData.config;
+                    
+                    statusDiv.innerHTML = '<div class="status success">✅ 工作流数据加载成功</div>';
+                    
+                    // 显示统计信息
+                    statsDiv.style.display = 'grid';
+                    statsDiv.innerHTML = `
+                        <div class="stat-item">
+                            <div class="stat-value">${config.nodes ? config.nodes.length : 0}</div>
+                            <div class="stat-label">节点数量</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${config.edges ? config.edges.length : 0}</div>
+                            <div class="stat-label">边数量</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${config.variables ? config.variables.length : 0}</div>
+                            <div class="stat-label">变量数量</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${config.version || 'N/A'}</div>
+                            <div class="stat-label">版本</div>
+                        </div>
+                    `;
+                    
+                    // 显示配置预览
+                    previewDiv.style.display = 'block';
+                    previewDiv.textContent = JSON.stringify(config, null, 2);
+                    
+                    // 启用复制按钮
+                    copyBtn.disabled = false;
+                    
+                    return true;
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">❌ 工作流数据加载失败</div>';
+                    return false;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ 加载错误: ${error.message}</div>`;
+                return false;
+            }
+        }
+        
+        // 4. 复制功能测试
+        async function testCopyFunction() {
+            const statusDiv = document.getElementById('copy-status');
+            
+            if (!workflowData || !workflowData.config) {
+                statusDiv.innerHTML = '<div class="status error">❌ 请先加载工作流数据</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="status info">🔄 正在测试复制功能...</div>';
+            
+            try {
+                const configJson = JSON.stringify(workflowData.config, null, 2);
+                
+                // 测试JSON序列化
+                statusDiv.innerHTML += '<div class="status success">✅ JSON序列化成功</div>';
+                statusDiv.innerHTML += `<div class="status info">JSON长度: ${configJson.length} 字符</div>`;
+                
+                // 测试复制到剪贴板
+                await navigator.clipboard.writeText(configJson);
+                statusDiv.innerHTML += '<div class="status success">✅ 复制到剪贴板成功</div>';
+                
+                // 验证剪贴板内容
+                const clipboardText = await navigator.clipboard.readText();
+                const isValid = clipboardText === configJson;
+                
+                if (isValid) {
+                    statusDiv.innerHTML += '<div class="status success">🎉 复制功能测试完全成功！</div>';
+                } else {
+                    statusDiv.innerHTML += '<div class="status error">❌ 剪贴板内容验证失败</div>';
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML += `<div class="status error">❌ 复制失败: ${error.message}</div>`;
+                
+                if (error.name === 'NotAllowedError') {
+                    statusDiv.innerHTML += '<div class="status info">💡 提示: 请确保已授权剪贴板访问权限</div>';
+                }
+            }
+        }
+        
+        // 页面加载时自动运行浏览器兼容性检查
+        document.addEventListener('DOMContentLoaded', function() {
+            checkBrowserCompatibility();
+        });
+    </script>
+</body>
+</html>

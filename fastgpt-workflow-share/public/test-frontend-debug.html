@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端调试测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 前端调试测试工具</h1>
+        <p>此页面用于测试前端数据获取和处理逻辑</p>
+        
+        <div class="test-section">
+            <h3>1. API连接测试</h3>
+            <button onclick="testApiConnection()">测试API连接</button>
+            <div id="api-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 工作流数据获取测试</h3>
+            <button onclick="testWorkflowData()">获取claude4-assistant数据</button>
+            <div id="workflow-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 配置数据详细分析</h3>
+            <button onclick="analyzeConfig()">分析配置数据</button>
+            <div id="config-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 模拟复制功能</h3>
+            <button onclick="simulateCopy()">模拟复制JSON</button>
+            <div id="copy-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        let workflowData = null;
+        
+        async function testApiConnection() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.textContent = '正在测试API连接...';
+            
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ API连接成功\n状态: ${response.status}\n响应: ${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ API连接失败\n错误: ${error.message}`;
+            }
+        }
+        
+        async function testWorkflowData() {
+            const resultDiv = document.getElementById('workflow-result');
+            resultDiv.textContent = '正在获取工作流数据...';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/workflows/claude4-assistant');
+                const data = await response.json();
+                workflowData = data;
+                
+                console.log('🔍 API原始响应数据:', data);
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ 工作流数据获取成功\n` +
+                    `状态: ${response.status}\n` +
+                    `工作流ID: ${data.id}\n` +
+                    `标题: ${data.title}\n` +
+                    `配置存在: ${!!data.config}\n` +
+                    `配置类型: ${typeof data.config}\n` +
+                    `节点数量: ${data.config?.nodes?.length || 0}\n` +
+                    `边数量: ${data.config?.edges?.length || 0}\n` +
+                    `变量数量: ${data.config?.variables?.length || 0}\n` +
+                    `版本: ${data.config?.version || 'N/A'}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 获取工作流数据失败\n错误: ${error.message}`;
+            }
+        }
+        
+        function analyzeConfig() {
+            const resultDiv = document.getElementById('config-result');
+            
+            if (!workflowData) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请先获取工作流数据';
+                return;
+            }
+            
+            const config = workflowData.config;
+            console.log('🔍 详细配置分析:', config);
+            
+            resultDiv.className = 'result success';
+            resultDiv.textContent = `📊 配置数据详细分析:\n` +
+                `配置对象: ${config ? '存在' : '不存在'}\n` +
+                `数据类型: ${typeof config}\n` +
+                `是否为null: ${config === null}\n` +
+                `是否为undefined: ${config === undefined}\n` +
+                `对象键: ${config ? Object.keys(config).join(', ') : 'N/A'}\n` +
+                `节点数组: ${Array.isArray(config?.nodes) ? '是数组' : '不是数组'}\n` +
+                `节点数量: ${config?.nodes?.length || 0}\n` +
+                `边数组: ${Array.isArray(config?.edges) ? '是数组' : '不是数组'}\n` +
+                `边数量: ${config?.edges?.length || 0}\n` +
+                `变量数组: ${Array.isArray(config?.variables) ? '是数组' : '不是数组'}\n` +
+                `变量数量: ${config?.variables?.length || 0}\n` +
+                `版本: ${config?.version || 'N/A'}\n` +
+                `AI设置: ${config?.aiSettings ? '存在' : '不存在'}\n\n` +
+                `完整配置JSON:\n${JSON.stringify(config, null, 2)}`;
+        }
+        
+        function simulateCopy() {
+            const resultDiv = document.getElementById('copy-result');
+            
+            if (!workflowData) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ 请先获取工作流数据';
+                return;
+            }
+            
+            try {
+                const jsonString = JSON.stringify(workflowData.config, null, 2);
+                console.log('📋 复制的JSON内容:', jsonString);
+                
+                // 尝试复制到剪贴板
+                navigator.clipboard.writeText(jsonString).then(() => {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ JSON复制成功\n` +
+                        `内容长度: ${jsonString.length} 字符\n` +
+                        `预览:\n${jsonString.substring(0, 500)}${jsonString.length > 500 ? '...' : ''}`;
+                }).catch(error => {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 复制到剪贴板失败: ${error.message}\n` +
+                        `但JSON生成成功:\n${jsonString.substring(0, 500)}${jsonString.length > 500 ? '...' : ''}`;
+                });
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ JSON序列化失败\n错误: ${error.message}`;
+            }
+        }
+        
+        // 页面加载时自动测试API连接
+        window.addEventListener('load', () => {
+            console.log('🚀 前端调试页面已加载');
+            testApiConnection();
+        });
+    </script>
+</body>
+</html>

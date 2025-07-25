@@ -1,0 +1,278 @@
+// API客户端 - 连接后端API服务
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// API响应类型定义
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// 后端API数据类型（与数据库对应）
+export interface ApiWorkflow {
+  id: string;
+  title: string;
+  description: string;
+  long_description?: string;
+  category_id: string;
+  category_name: string;
+  tags: string[];
+  thumbnail_url?: string;
+  screenshots?: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimated_time?: string;
+  usage_count: number;
+  like_count: number;
+  created_at: string;
+  updated_at: string;
+  author_name: string;
+  author_avatar?: string;
+  demo_url?: string;
+  instructions?: string[];
+  requirements?: string[];
+  config?: Record<string, unknown>;
+  is_featured?: boolean;
+}
+
+export interface ApiCategory {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  workflow_count?: number;
+}
+
+export interface ApiTag {
+  id: string;
+  name: string;
+  usage_count: number;
+}
+
+export interface ApiStats {
+  total_workflows: number;
+  category_stats: Array<{
+    category_id: string;
+    category_name: string;
+    workflow_count: number;
+  }>;
+  popular_tags: Array<{
+    tag_id: string;
+    tag_name: string;
+    usage_count: number;
+  }>;
+  recent_activities: Array<{
+    action_type: string;
+    count: number;
+  }>;
+}
+
+// API请求函数
+class ApiClient {
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`API请求错误 [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // 获取健康状态
+  async getHealth() {
+    return this.request<{ status: string; timestamp: string; uptime: number }>('/health');
+  }
+
+  // 获取分类列表
+  async getCategories(): Promise<ApiResponse<ApiCategory[]>> {
+    return this.request<ApiCategory[]>('/api/categories');
+  }
+
+  // 获取工作流列表
+  async getWorkflows(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    search?: string;
+    tags?: string[];
+  }): Promise<ApiResponse<ApiWorkflow[]>> {
+    const searchParams = new URLSearchParams();
+    
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.category && params.category !== 'all') searchParams.append('category', params.category);
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.tags?.length) {
+      params.tags.forEach(tag => searchParams.append('tags', tag));
+    }
+
+    const queryString = searchParams.toString();
+    const endpoint = `/api/workflows${queryString ? `?${queryString}` : ''}`;
+    
+    return this.request<ApiWorkflow[]>(endpoint);
+  }
+
+  // 获取工作流详情
+  async getWorkflowById(id: string): Promise<ApiResponse<ApiWorkflow>> {
+    return this.request<ApiWorkflow>(`/api/workflows/${id}`);
+  }
+
+  // 获取标签列表
+  async getTags(): Promise<ApiResponse<ApiTag[]>> {
+    return this.request<ApiTag[]>('/api/tags');
+  }
+
+  // 获取统计信息
+  async getStats(): Promise<ApiResponse<ApiStats>> {
+    return this.request<ApiStats>('/api/stats');
+  }
+
+  // 记录用户行为
+  async recordAction(workflowId: string, actionType: 'view' | 'like' | 'copy' | 'download' | 'try'): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request<{ success: boolean }>(`/api/workflows/${workflowId}/actions`, {
+      method: 'POST',
+      body: JSON.stringify({ action_type: actionType }),
+    });
+  }
+}
+
+// 创建API客户端实例
+export const apiClient = new ApiClient();
+
+// 数据转换函数 - 将API数据转换为前端组件所需的格式
+export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import('./types').Workflow {
+  const transformedConfig: import('./types').FastGPTWorkflowConfig = apiWorkflow.config && typeof apiWorkflow.config === 'object' 
+    ? (apiWorkflow.config as unknown) as import('./types').FastGPTWorkflowConfig
+    : {
+        nodes: [],
+        edges: [],
+        variables: [],
+        version: '1.0',
+      };
+  
+  return {
+    id: apiWorkflow.id,
+    title: apiWorkflow.title,
+    description: apiWorkflow.description,
+    longDescription: apiWorkflow.long_description || apiWorkflow.description,
+    category: {
+      id: apiWorkflow.category_id,
+      name: apiWorkflow.category_name,
+      icon: getCategoryIcon(apiWorkflow.category_id),
+      color: getCategoryColor(apiWorkflow.category_id),
+    },
+    tags: apiWorkflow.tags,
+    thumbnail: apiWorkflow.thumbnail_url || '/workflows/default.jpg',
+    screenshots: apiWorkflow.screenshots || [],
+    difficulty: apiWorkflow.difficulty,
+    estimatedTime: apiWorkflow.estimated_time || '未知',
+    usageCount: apiWorkflow.usage_count,
+    likeCount: apiWorkflow.like_count,
+    createdAt: apiWorkflow.created_at,
+    updatedAt: apiWorkflow.updated_at,
+    author: {
+      name: apiWorkflow.author_name,
+      avatar: apiWorkflow.author_avatar || '/avatars/default.jpg',
+    },
+    config: transformedConfig,
+    demoUrl: apiWorkflow.demo_url,
+    instructions: apiWorkflow.instructions || [],
+    requirements: apiWorkflow.requirements || [],
+    is_featured: apiWorkflow.is_featured,
+  };
+}
+
+export function transformApiCategoryToCategory(apiCategory: ApiCategory): import('./types').WorkflowCategory {
+  return {
+    id: apiCategory.id,
+    name: apiCategory.name,
+    icon: apiCategory.icon || getCategoryIcon(apiCategory.id),
+    color: apiCategory.color || getCategoryColor(apiCategory.id),
+  };
+}
+
+// 辅助函数 - 根据分类ID获取图标
+function getCategoryIcon(categoryId: string): string {
+  const iconMap: Record<string, string> = {
+    'all': 'Grid3X3',
+    'customer-service': 'MessageCircle',
+    'content-creation': 'PenTool',
+    'data-analysis': 'BarChart3',
+    'automation': 'Zap',
+    'education': 'GraduationCap',
+    'business': 'Briefcase',
+  };
+  return iconMap[categoryId] || 'Grid3X3';
+}
+
+// 辅助函数 - 根据分类ID获取颜色
+function getCategoryColor(categoryId: string): string {
+  const colorMap: Record<string, string> = {
+    'all': '#6b7280',
+    'customer-service': '#3b82f6',
+    'content-creation': '#8b5cf6',
+    'data-analysis': '#10b981',
+    'automation': '#f59e0b',
+    'education': '#ef4444',
+    'business': '#06b6d4',
+  };
+  return colorMap[categoryId] || '#6b7280';
+}
+
+// 错误处理辅助函数
+export function handleApiError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '发生未知错误，请稍后重试';
+}
+
+// 缓存管理
+class ApiCache {
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
+
+  set(key: string, data: unknown, ttl: number = 5 * 60 * 1000) { // 默认5分钟缓存
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl,
+    });
+  }
+
+  get(key: string): unknown | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    if (Date.now() - item.timestamp > item.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return item.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+export const apiCache = new ApiCache();
