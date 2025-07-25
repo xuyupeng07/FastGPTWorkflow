@@ -17,8 +17,8 @@ interface WorkflowGridProps {
 }
 
 const sortOptions = [
-  { value: 'popularity', label: '热门度' },
   { value: 'usage', label: '使用量' },
+  { value: 'popularity', label: '热门度' },
   { value: 'newest', label: '最新' }
 ];
 

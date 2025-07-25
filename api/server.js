@@ -33,7 +33,8 @@ app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // 设置请求体大小限制为50MB
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // 设置表单数据大小限制为50MB
 app.use(express.static('public'));
 
 // 确保uploads目录存在
@@ -259,10 +260,14 @@ app.get('/api/workflows', async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    // 为每个工作流添加空的screenshots数组（避免额外查询）
+    // 为每个工作流添加空的screenshots数组并格式化作者信息
     const workflowsWithExtras = result.rows.map(workflow => ({
       ...workflow,
-      screenshots: [] // 暂时返回空数组，避免复杂查询
+      screenshots: [], // 暂时返回空数组，避免复杂查询
+      author: {
+        name: workflow.author_name,
+        avatar: workflow.author_avatar
+      }
     }));
     
     // 简化的总数查询
@@ -365,6 +370,10 @@ app.get('/api/workflows/:id', async (req, res) => {
       ...workflow,
       screenshots: screenshotsResult.rows.map(row => row.image_url),
       instructions: instructionsResult.rows.map(row => row.instruction_text),
+      author: {
+        name: workflow.author_name,
+        avatar: workflow.author_avatar
+      },
       config: workflow.json_source ? (() => {
         try {
           return JSON.parse(workflow.json_source);

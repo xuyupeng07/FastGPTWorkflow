@@ -430,14 +430,24 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                {/* 作者信息 */}
                 <div className="flex items-center gap-1.5 mb-0.5 mt-1">
                   <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center border border-gray-200">
-                    <img src="/fastgpt.svg" alt="FastGPT" className="w-3.5 h-3.5" />
+                    <img 
+                      src={workflow.author?.avatar || "/fastgpt.svg"} 
+                      alt={workflow.author?.name || "FastGPT"} 
+                      className="w-3.5 h-3.5" 
+                    />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">FastGPT团队</span>
-                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center ml-0.5">
-                    <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
+                  <span className="text-sm font-medium text-gray-700">
+                    {/* 显示实际作者名称 */}
+                    {workflow.author?.name || 'FastGPT团队'}
+                  </span>
+                  {/* 只有FastGPT团队才显示认证标志 */}
+                  {(workflow.author?.name === 'FastGPT团队' || !workflow.author?.name) && (
+                    <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center ml-0.5">
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
              </div>
            </div>
