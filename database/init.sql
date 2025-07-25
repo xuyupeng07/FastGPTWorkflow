@@ -70,21 +70,7 @@ CREATE TABLE IF NOT EXISTS workflow_configs (
     UNIQUE(workflow_id)
 );
 
--- 5. 工作流标签表
-CREATE TABLE IF NOT EXISTS workflow_tags (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    color VARCHAR(7) DEFAULT '#6b7280',
-    usage_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
--- 6. 工作流标签关联表
-CREATE TABLE IF NOT EXISTS workflow_tag_relations (
-    workflow_id VARCHAR(50) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-    tag_id INTEGER NOT NULL REFERENCES workflow_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (workflow_id, tag_id)
-);
 
 -- 7. 工作流截图表
 CREATE TABLE IF NOT EXISTS workflow_screenshots (
@@ -145,9 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_workflows_share_id ON workflows(share_id);
 -- 全文搜索索引
 CREATE INDEX IF NOT EXISTS idx_workflows_search ON workflows USING gin(to_tsvector('english', title || ' ' || description));
 
--- 标签关联索引
-CREATE INDEX IF NOT EXISTS idx_tag_relations_workflow ON workflow_tag_relations(workflow_id);
-CREATE INDEX IF NOT EXISTS idx_tag_relations_tag ON workflow_tag_relations(tag_id);
+
 
 -- 用户行为索引
 CREATE INDEX IF NOT EXISTS idx_user_actions_workflow ON user_actions(workflow_id, action_type);
@@ -194,21 +178,7 @@ ON CONFLICT (email) DO UPDATE SET
     is_verified = EXCLUDED.is_verified,
     updated_at = CURRENT_TIMESTAMP;
 
--- 插入初始标签数据
-INSERT INTO workflow_tags (name, color) VALUES
-('AI助手', '#3b82f6'),
-('客服', '#10b981'),
-('写作', '#8b5cf6'),
-('分析', '#f59e0b'),
-('自动化', '#ef4444'),
-('教育', '#6366f1'),
-('商业', '#8b5cf6'),
-('数据处理', '#10b981'),
-('对话', '#3b82f6'),
-('内容生成', '#8b5cf6'),
-('流程优化', '#f59e0b'),
-('智能推荐', '#ef4444')
-ON CONFLICT (name) DO NOTHING;
+
 
 -- 创建更新时间触发器函数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -252,7 +222,6 @@ SELECT
     w.description,
     w.long_description,
     w.thumbnail_url,
-    w.difficulty,
     w.estimated_time,
     w.usage_count,
     w.like_count,
@@ -278,26 +247,13 @@ SELECT
     wc.edges_count,
     wc.variables_count,
     wc.config_json,
-    -- 标签信息（聚合）
-    COALESCE(
-        json_agg(
-            json_build_object(
-                'id', t.id,
-                'name', t.name,
-                'color', t.color
-            )
-        ) FILTER (WHERE t.id IS NOT NULL), 
-        '[]'::json
-    ) as tags
 FROM workflows w
 LEFT JOIN workflow_categories c ON w.category_id = c.id
 LEFT JOIN authors a ON w.author_id = a.id
 LEFT JOIN workflow_configs wc ON w.id = wc.workflow_id
-LEFT JOIN workflow_tag_relations wtr ON w.id = wtr.workflow_id
-LEFT JOIN workflow_tags t ON wtr.tag_id = t.id
 GROUP BY 
     w.id, w.title, w.description, w.long_description, w.thumbnail_url,
-    w.difficulty, w.estimated_time, w.usage_count, w.like_count, w.view_count,
+    w.estimated_time, w.usage_count, w.like_count, w.view_count,
     w.demo_url, w.share_id, w.is_featured, w.is_published, w.version,
     w.created_at, w.updated_at, w.published_at,
     c.name, c.icon, c.color,
@@ -321,46 +277,7 @@ WHERE c.is_active = true
 GROUP BY c.id, c.name, c.icon, c.color, c.sort_order
 ORDER BY c.sort_order;
 
--- 创建统计视图：热门标签
-CREATE OR REPLACE VIEW popular_tags AS
-SELECT 
-    t.id,
-    t.name,
-    t.color,
-    COUNT(wtr.workflow_id) as workflow_count,
-    COALESCE(SUM(w.usage_count), 0) as total_usage
-FROM workflow_tags t
-LEFT JOIN workflow_tag_relations wtr ON t.id = wtr.tag_id
-LEFT JOIN workflows w ON wtr.workflow_id = w.id AND w.is_published = true
-GROUP BY t.id, t.name, t.color
-HAVING COUNT(wtr.workflow_id) > 0
-ORDER BY workflow_count DESC, total_usage DESC;
 
--- 创建函数：更新标签使用计数
-CREATE OR REPLACE FUNCTION update_tag_usage_count()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        UPDATE workflow_tags 
-        SET usage_count = usage_count + 1 
-        WHERE id = NEW.tag_id;
-        RETURN NEW;
-    ELSIF TG_OP = 'DELETE' THEN
-        UPDATE workflow_tags 
-        SET usage_count = GREATEST(usage_count - 1, 0) 
-        WHERE id = OLD.tag_id;
-        RETURN OLD;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
--- 创建触发器：自动更新标签使用计数
-DROP TRIGGER IF EXISTS trigger_update_tag_usage ON workflow_tag_relations;
-CREATE TRIGGER trigger_update_tag_usage
-    AFTER INSERT OR DELETE ON workflow_tag_relations
-    FOR EACH ROW
-    EXECUTE FUNCTION update_tag_usage_count();
 
 -- 创建函数：记录用户行为并更新统计
 CREATE OR REPLACE FUNCTION record_user_action(
@@ -392,8 +309,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION search_workflows(
     p_query TEXT DEFAULT NULL,
     p_category_id VARCHAR(50) DEFAULT NULL,
-    p_difficulty VARCHAR(20) DEFAULT NULL,
-    p_tags INTEGER[] DEFAULT NULL,
+
+
     p_limit INTEGER DEFAULT 20,
     p_offset INTEGER DEFAULT 0,
     p_sort_by VARCHAR(20) DEFAULT 'newest'
@@ -403,7 +320,7 @@ RETURNS TABLE(
     title VARCHAR(200),
     description TEXT,
     category_name VARCHAR(100),
-    difficulty VARCHAR(20),
+
     usage_count INTEGER,
     like_count INTEGER,
     created_at TIMESTAMP,
@@ -425,14 +342,9 @@ BEGIN
         where_conditions := array_append(where_conditions, 'w.category_id = ''' || p_category_id || '''');
     END IF;
     
-    IF p_difficulty IS NOT NULL THEN
-        where_conditions := array_append(where_conditions, 'w.difficulty = ''' || p_difficulty || '''');
-    END IF;
+
     
-    IF p_tags IS NOT NULL AND array_length(p_tags, 1) > 0 THEN
-        where_conditions := array_append(where_conditions, 
-            'EXISTS (SELECT 1 FROM workflow_tag_relations wtr WHERE wtr.workflow_id = w.id AND wtr.tag_id = ANY(''' || p_tags::text || '''))');
-    END IF;
+
     
     -- 添加基本条件
     where_conditions := array_append(where_conditions, 'w.is_published = true');

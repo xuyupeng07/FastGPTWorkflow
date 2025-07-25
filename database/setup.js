@@ -24,6 +24,21 @@ async function initializeDatabase() {
     await client.connect();
     console.log('✅ 数据库连接成功！');
 
+    // 先删除所有表（如果存在）
+    console.log('🗑️ 清理现有表结构...');
+    await client.query(`
+      DROP TABLE IF EXISTS user_actions CASCADE;
+      DROP TABLE IF EXISTS workflow_requirements CASCADE;
+      DROP TABLE IF EXISTS workflow_instructions CASCADE;
+      DROP TABLE IF EXISTS workflow_screenshots CASCADE;
+      DROP TABLE IF EXISTS workflow_tag_relations CASCADE;
+      DROP TABLE IF EXISTS workflow_configs CASCADE;
+      DROP TABLE IF EXISTS workflows CASCADE;
+      DROP TABLE IF EXISTS workflow_tags CASCADE;
+      DROP TABLE IF EXISTS authors CASCADE;
+      DROP TABLE IF EXISTS workflow_categories CASCADE;
+    `);
+
     // 读取初始化SQL文件
     const sqlFilePath = path.join(__dirname, 'init.sql');
     const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
