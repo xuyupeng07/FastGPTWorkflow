@@ -4,39 +4,27 @@ import { Workflow, WorkflowCategory } from './types';
 export const categories: WorkflowCategory[] = [
   {
     id: 'all',
-    name: '全部',
-    icon: 'Grid3X3',
-    color: '#6b7280'
+    name: '全部'
   },
   {
     id: 'customer-service',
-    name: '客服助手',
-    icon: 'MessageCircle',
-    color: '#3b82f6'
+    name: '客服助手'
   },
   {
     id: 'content-creation',
-    name: '内容创作',
-    icon: 'PenTool',
-    color: '#8b5cf6'
+    name: '内容创作'
   },
   {
     id: 'data-analysis',
-    name: '数据分析',
-    icon: 'BarChart3',
-    color: '#10b981'
+    name: '数据分析'
   },
   {
     id: 'automation',
-    name: '流程自动化',
-    icon: 'Zap',
-    color: '#f59e0b'
+    name: '流程自动化'
   },
   {
     id: 'education',
-    name: '教育培训',
-    icon: 'GraduationCap',
-    color: '#ef4444'
+    name: '教育培训'
   }
 ];
 

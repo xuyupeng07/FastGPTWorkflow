@@ -125,7 +125,7 @@ export default function WorkflowDetailPage() {
     
     try {
       // 直接从API获取最新数据
-      const response = await fetch(`http://localhost:3001/api/workflows/${workflow.id}`);
+      const response = await fetch(`http://localhost:3002/api/workflows/${workflow.id}`);
       const result = await response.json();
       
       if (result.success && result.data.config) {

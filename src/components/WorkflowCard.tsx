@@ -93,7 +93,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
       }
       
       // 如果没有JSON源码，从API获取配置数据
-      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
       const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}`);
       
       if (!response.ok) {
@@ -173,7 +173,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
   // 记录用户行为的函数
   const recordUserAction = useCallback(async (actionType: string) => {
     try {
-      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
       const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/actions`, {
         method: 'POST',
         headers: {
@@ -245,7 +245,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
     // 防抖延迟100ms
     fetchLikeStatusRef.current = setTimeout(async () => {
       try {
-        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
         const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/like-status?user_session_id=${sessionId}`, {
           // 添加缓存控制
           headers: {
@@ -329,7 +329,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
     // 延迟50ms发送请求，给UI更新时间
     handleLikeRef.current = setTimeout(async () => {
       try {
-        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
         
         const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/actions`, {
           method: 'POST',
@@ -510,10 +510,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                   已复制
                 </>
               ) : (
-                <>
-                  <Copy className="w-3 h-3 mr-1" />
-                  Copy
-                </>
+                <>                  Copy                </>
               )}
             </Button>
             <Button 

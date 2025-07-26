@@ -126,7 +126,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
               <div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-black text-white hover:bg-gray-800"
                   disabled={isLoading}
                 >
                   {isLoading ? '登录中...' : '登录'}

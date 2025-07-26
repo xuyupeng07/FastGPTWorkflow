@@ -56,19 +56,17 @@ export function WorkflowGrid({
           {/* 左侧：排序选项 */}
           <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
             {sortOptions.map((option) => (
-              <Button
+              <button
                 key={option.value}
-                variant="ghost"
-                size="sm"
                 onClick={() => setSortBy(option.value)}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                   sortBy === option.value 
                     ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/70 hover:scale-105 hover:shadow-sm'
                 }`}
               >
                 {option.label}
-              </Button>
+              </button>
             ))}
           </div>
 

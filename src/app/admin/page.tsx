@@ -58,7 +58,7 @@ interface Author {
 
 
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
 
 function AdminContent() {
   const { logout } = useAuth();
@@ -530,13 +530,12 @@ function AdminContent() {
             <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
           </div>
           <Button
-            variant="outline"
-            onClick={logout}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            登出
-          </Button>
+          onClick={logout}
+          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
+        >
+          <LogOut className="h-4 w-4" />
+          登出
+        </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -572,7 +571,7 @@ function AdminContent() {
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="选择分类" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       <SelectItem value="all">所有分类</SelectItem>
                     </SelectContent>
                   </Select>
@@ -655,9 +654,8 @@ function AdminContent() {
           <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
         </div>
         <Button
-          variant="outline"
           onClick={logout}
-          className="flex items-center gap-2"
+          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
         >
           <LogOut className="h-4 w-4" />
           登出
@@ -665,12 +663,11 @@ function AdminContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="workflows">工作流管理</TabsTrigger>
-          <TabsTrigger value="categories">分类管理</TabsTrigger>
-          <TabsTrigger value="authors">作者管理</TabsTrigger>
-          
-          <TabsTrigger value="stats">统计信息</TabsTrigger>
+        <TabsList className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
+          <TabsTrigger value="workflows" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">工作流管理</TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">分类管理</TabsTrigger>
+          <TabsTrigger value="authors" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">作者管理</TabsTrigger>
+          <TabsTrigger value="stats" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">统计信息</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workflows" className="space-y-6">
@@ -698,7 +695,7 @@ function AdminContent() {
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="选择分类" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     <SelectItem value="all">所有分类</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
@@ -709,12 +706,15 @@ function AdminContent() {
                 </Select>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}>
+                    <Button 
+                      onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
+                      className="bg-black text-white hover:bg-gray-800"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       新建工作流
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
                     <DialogHeader>
                       <DialogTitle>创建新工作流</DialogTitle>
                       <DialogDescription>
@@ -738,7 +738,7 @@ function AdminContent() {
                             <SelectTrigger>
                               <SelectValue placeholder="选择分类" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white">
                               {categories.filter(category => category.id !== 'all').map((category) => (
                                 <SelectItem key={category.id} value={category.id}>
                                   {category.name}
@@ -765,7 +765,7 @@ function AdminContent() {
                             <SelectTrigger>
                               <SelectValue placeholder="选择作者" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white">
                               {authors.map((author) => (
                                 <SelectItem key={author.id} value={author.id.toString()}>
                                   {author.name}
@@ -863,10 +863,17 @@ function AdminContent() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsCreateDialogOpen(false)}
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
                         取消
                       </Button>
-                      <Button onClick={handleCreate}>
+                      <Button 
+                        onClick={handleCreate}
+                        className="bg-black text-white hover:bg-gray-800"
+                      >
                         创建
                       </Button>
                     </DialogFooter>
@@ -1004,7 +1011,7 @@ function AdminContent() {
                 <CardTitle>分类管理</CardTitle>
                 <CardDescription>管理工作流分类</CardDescription>
               </div>
-              <Button onClick={() => setIsCreateCategoryDialogOpen(true)}>
+              <Button onClick={() => setIsCreateCategoryDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
                 <Plus className="w-4 h-4 mr-2" />
                 新建分类
               </Button>
@@ -1164,7 +1171,7 @@ function AdminContent() {
 
       {/* 编辑对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
           <DialogHeader>
             <DialogTitle>编辑工作流</DialogTitle>
             <DialogDescription>
@@ -1188,7 +1195,7 @@ function AdminContent() {
                   <SelectTrigger>
                     <SelectValue placeholder="选择分类" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {categories.filter(category => category.id !== 'all').map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -1215,7 +1222,7 @@ function AdminContent() {
                   <SelectTrigger>
                     <SelectValue placeholder="选择作者" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {authors.map((author) => (
                       <SelectItem key={author.id} value={author.id.toString()}>
                         {author.name}
@@ -1313,10 +1320,17 @@ function AdminContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
               取消
             </Button>
-            <Button onClick={handleUpdate}>
+            <Button 
+              onClick={handleUpdate}
+              className="bg-black text-white hover:bg-gray-800"
+            >
               更新
             </Button>
           </DialogFooter>
@@ -1327,7 +1341,7 @@ function AdminContent() {
 
       {/* 创建分类对话框 */}
       <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>创建新分类</DialogTitle>
             <DialogDescription>
@@ -1365,10 +1379,17 @@ function AdminContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateCategoryDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateCategoryDialogOpen(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
               取消
             </Button>
-            <Button onClick={handleCreateCategory}>
+            <Button 
+              onClick={handleCreateCategory}
+              className="bg-black text-white hover:bg-gray-800"
+            >
               创建
             </Button>
           </DialogFooter>
@@ -1377,7 +1398,7 @@ function AdminContent() {
 
       {/* 编辑分类对话框 */}
       <Dialog open={isEditCategoryDialogOpen} onOpenChange={setIsEditCategoryDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>编辑分类</DialogTitle>
             <DialogDescription>
@@ -1416,10 +1437,17 @@ function AdminContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditCategoryDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditCategoryDialogOpen(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
               取消
             </Button>
-            <Button onClick={handleUpdateCategory}>
+            <Button 
+              onClick={handleUpdateCategory}
+              className="bg-black text-white hover:bg-gray-800"
+            >
               更新
             </Button>
           </DialogFooter>

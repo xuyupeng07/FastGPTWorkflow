@@ -1,6 +1,6 @@
 // API客户端 - 连接后端API服务
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
 
 // API响应类型定义
 export interface ApiResponse<T> {

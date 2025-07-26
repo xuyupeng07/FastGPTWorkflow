@@ -80,7 +80,7 @@ export function Header({ onSearch }: HeaderProps) {
               placeholder="搜索 AI 工作流模板..."
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full pl-10 h-10 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 rounded-lg shadow-sm"
+              className="w-full pl-10"
             />
           </div>
         </div>
@@ -88,24 +88,24 @@ export function Header({ onSearch }: HeaderProps) {
         {/* 右侧按钮 */}
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="sm" asChild>
-            <a href="https://github.com/labring/FastGPT" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 transition-all duration-200 rounded-md">
+            <a href="https://github.com/labring/FastGPT" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md group">
               <Image
                 src="/github.png"
                 alt="GitHub"
                 width={18}
                 height={18}
-                className="w-5 h-5 opacity-80"
+                className="w-5 h-5 opacity-80 group-hover:opacity-100 transition-opacity duration-200"
               />
-              <span className="text-base font-medium text-gray-700">GitHub</span>
+              <span className="text-base font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-200">GitHub</span>
               {!isLoading && starCount && (
                 <div className="flex items-center gap-1 ml-1">
-                  <Star className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-600">{starCount}</span>
+                  <Star className="w-4 h-4 text-gray-600 group-hover:text-yellow-500 transition-colors duration-200" />
+                  <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors duration-200">{starCount}</span>
                 </div>
               )}
             </a>
           </Button>
-          <Button size="sm" asChild>
+          <Button size="sm" asChild className="bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
             <a href="https://cloud.fastgpt.cn/login" target="_blank" rel="noopener noreferrer">
               开始使用
             </a>

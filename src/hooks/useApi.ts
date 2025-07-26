@@ -202,9 +202,7 @@ export function useCategories() {
         // 在最前面添加"全部"分类
         const allCategory: WorkflowCategory = {
           id: 'all',
-          name: '全部',
-          icon: 'Grid3X3',
-          color: '#6b7280'
+          name: '全部'
         };
         
         const categoriesWithAll = [allCategory, ...transformedCategories];
