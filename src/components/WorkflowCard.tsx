@@ -247,10 +247,14 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
       try {
         const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
         const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/like-status?user_session_id=${sessionId}`, {
-          // 添加缓存控制
+          method: 'GET',
           headers: {
+            'Content-Type': 'application/json',
             'Cache-Control': 'max-age=300' // 5分钟缓存
-          }
+          },
+          // 添加跨域和超时配置
+          mode: 'cors',
+          credentials: 'same-origin'
         });
         
         if (response.ok) {
@@ -261,9 +265,14 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
             // 更新缓存
             setCachedLikeStatus(workflow.id, sessionId, result.data.liked, result.data.like_count);
           }
+        } else {
+          // 如果响应不成功，使用默认值
+          console.warn(`获取点赞状态失败，状态码: ${response.status}`);
         }
       } catch (error) {
-        console.error('获取点赞状态失败:', error);
+        // 网络错误时静默处理，使用缓存或默认值
+        console.warn('获取点赞状态失败，使用默认值:', error);
+        // 不显示错误，保持现有状态
       }
     }, 100);
   }, [workflow.id, setCachedLikeStatus]);
@@ -336,6 +345,8 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
           headers: {
             'Content-Type': 'application/json',
           },
+          mode: 'cors',
+          credentials: 'same-origin',
           body: JSON.stringify({
             action_type: 'like',
             user_session_id: userSessionId
