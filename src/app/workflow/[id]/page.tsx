@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { JsonViewer } from '@/components/JsonViewer';
@@ -20,7 +20,6 @@ import {
   Star,
   CheckCircle,
   AlertCircle,
-  Info,
   MessageSquare,
   Zap,
   Settings,
@@ -29,7 +28,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useWorkflow, useUserActions } from '@/hooks/useApi';
-import { Workflow } from '@/lib/types';
+
 import { getApiBaseUrl } from '@/lib/config';
 
 export default function WorkflowDetailPage() {
@@ -37,11 +36,17 @@ export default function WorkflowDetailPage() {
   const workflowId = params.id as string;
   const { data: workflow, loading, error, refetch } = useWorkflow(workflowId);
   const { recordAction, loading: actionLoading } = useUserActions();
-  const [isExperiencing, setIsExperiencing] = useState(false);
+  const [isExperiencing] = useState(false);
   const [showJsonViewer, setShowJsonViewer] = useState(false);
   const [showExperience, setShowExperience] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [likeSuccess, setLikeSuccess] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  
+  // 初始化客户端状态
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // 调试信息显示
   const debugInfo = workflow ? {
@@ -122,7 +127,7 @@ export default function WorkflowDetailPage() {
       e.stopPropagation();
     }
     
-    if (!workflow) return;
+    if (!workflow || !isClient) return;
     
     try {
       // 直接从API获取最新数据
@@ -145,8 +150,8 @@ export default function WorkflowDetailPage() {
       } else {
         throw new Error('无法获取配置数据');
       }
-    } catch (error) {
-      console.error('复制失败:', error);
+    } catch (_error) {
+      console.error('记录行为失败:', _error);
     }
   };
 
@@ -160,32 +165,9 @@ export default function WorkflowDetailPage() {
     }
   };
 
-  const handleDownload = async () => {
-    try {
-      await recordAction(workflowId, 'download');
-      // 触发下载
-      const blob = new Blob([JSON.stringify(workflow.config, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${workflow.title}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('下载失败:', err);
-    }
-  };
 
-  const handleTry = async () => {
-    try {
-      await recordAction(workflowId, 'try');
-      setShowExperience(true);
-    } catch (err) {
-      console.error('体验失败:', err);
-    }
-  };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">

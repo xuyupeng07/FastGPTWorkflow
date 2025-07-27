@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import Image from 'next/image';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AdminLogin from '@/components/AdminLogin';
 import { getApiUrl } from '@/lib/config';
@@ -68,8 +69,7 @@ function AdminContent() {
   const [authors, setAuthors] = useState<Author[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [workflowsLoading, setWorkflowsLoading] = useState(true);
-  const [secondaryDataLoading, setSecondaryDataLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -81,7 +81,7 @@ function AdminContent() {
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
-  const [totalWorkflows, setTotalWorkflows] = useState(0);
+
   
   // 防抖搜索
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -171,15 +171,12 @@ function AdminContent() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      setWorkflowsLoading(true);
-      setSecondaryDataLoading(true);
       
       // 优先加载关键数据
       const workflowsRes = await fetch(`${API_BASE_URL}/workflows?limit=50`);
       const workflowsData = await workflowsRes.json();
       if (workflowsData.success) {
         setWorkflows(workflowsData.data);
-        setWorkflowsLoading(false);
         setLoading(false); // 主要内容已加载
       }
       
@@ -196,9 +193,8 @@ function AdminContent() {
 
       if (categoriesData.success) setCategories(categoriesData.data);
       if (authorsData.success) setAuthors(authorsData.data);
-      setSecondaryDataLoading(false);
-    } catch (error) {
-      console.error('获取数据失败:', error);
+    } catch (_error) {
+      console.error('获取数据失败:', _error);
       toast.error('获取数据失败');
     } finally {
       setLoading(false);
@@ -247,8 +243,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '创建失败');
       }
-    } catch (error) {
-      console.error('创建失败:', error);
+    } catch (_error) {
+      console.error('创建失败:', _error);
       toast.error('创建失败');
     }
   };
@@ -298,8 +294,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '更新失败');
       }
-    } catch (error) {
-      console.error('更新失败:', error);
+    } catch (_error) {
+      console.error('更新失败:', _error);
       toast.error('更新失败');
     }
   };
@@ -320,8 +316,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '删除失败');
       }
-    } catch (error) {
-      console.error('删除失败:', error);
+    } catch (_error) {
+      console.error('删除失败:', _error);
       toast.error('删除失败');
     }
   };
@@ -376,8 +372,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '上传失败');
       }
-    } catch (error) {
-      console.error('上传失败:', error);
+    } catch (_error) {
+      console.error('上传失败:', _error);
       toast.error('上传失败');
     } finally {
       setUploading(false);
@@ -443,8 +439,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '创建失败');
       }
-    } catch (error) {
-      console.error('创建分类失败:', error);
+    } catch (_error) {
+      console.error('创建分类失败:', _error);
       toast.error('创建失败');
     }
   };
@@ -479,8 +475,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '更新失败');
       }
-    } catch (error) {
-      console.error('更新分类失败:', error);
+    } catch (_error) {
+      console.error('更新分类失败:', _error);
       toast.error('更新失败');
     }
   };
@@ -501,8 +497,8 @@ function AdminContent() {
       } else {
         toast.error(result.error || '删除失败');
       }
-    } catch (error) {
-      console.error('删除分类失败:', error);
+    } catch (_error) {
+      console.error('删除分类失败:', _error);
       toast.error('删除失败');
     }
   };
@@ -825,9 +821,11 @@ function AdminContent() {
                           {/* 图片预览 */}
                           {formData.thumbnail_url && (
                             <div className="mt-2">
-                              <img
+                              <Image
                                 src={formData.thumbnail_url}
                                 alt="Logo预览"
+                                width={80}
+                                height={80}
                                 className="w-20 h-20 object-cover rounded border"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = '/placeholder.svg';
@@ -904,9 +902,11 @@ function AdminContent() {
                       <TableRow key={workflow.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <img
+                            <Image
                               src={workflow.thumbnail_url}
                               alt={workflow.title}
+                              width={40}
+                              height={40}
                               className="w-10 h-10 rounded object-cover"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/placeholder.svg';
@@ -1086,9 +1086,11 @@ function AdminContent() {
                   <Card key={author.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-3">
-                        <img
+                        <Image
                           src={author.avatar_url || '/default-avatar.svg'}
                           alt={author.name}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/placeholder.svg';
@@ -1283,9 +1285,11 @@ function AdminContent() {
                 {/* 图片预览 */}
                 {formData.thumbnail_url && (
                   <div className="mt-2">
-                    <img
+                    <Image
                       src={formData.thumbnail_url}
                       alt="Logo预览"
+                      width={80}
+                      height={80}
                       className="w-20 h-20 object-cover rounded border"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder.svg';

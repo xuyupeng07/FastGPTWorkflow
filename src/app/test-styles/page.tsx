@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function TestStyles() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
@@ -59,12 +61,12 @@ export default function TestStyles() {
         </div>
         
         <div className="mt-8 text-center">
-          <a 
+          <Link 
             href="/" 
             className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
           >
             返回首页
-          </a>
+          </Link>
         </div>
       </div>
     </div>

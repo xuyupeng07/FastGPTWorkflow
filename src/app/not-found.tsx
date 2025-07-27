@@ -4,7 +4,7 @@ import React from 'react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Home, Search } from 'lucide-react';
+import { Home, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NotFound() {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { WorkflowGrid } from '@/components/WorkflowGrid';
 import { useWorkflows, useCategories } from '@/hooks/useApi';
@@ -9,12 +9,16 @@ import { Loader2, AlertCircle } from 'lucide-react';
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [mounted, setMounted] = useState(false);
   
-  // 获取工作流数据，使用合理的分页参数
-  const { data: allWorkflows, loading: workflowsLoading, error: workflowsError, refetch: refetchWorkflows } = useWorkflows({
+  // 修复无限循环问题：将参数对象提取到组件外部或使用useMemo
+  const workflowParams = useMemo(() => ({
     limit: 50, // 使用合理的分页大小
     page: 1
-  });
+  }), []);
+  
+  // 获取工作流数据，使用合理的分页参数
+  const { data: allWorkflows, loading: workflowsLoading, error: workflowsError, refetch: refetchWorkflows } = useWorkflows(workflowParams);
   
   // 在前端进行搜索和分类过滤
   const workflows = useMemo(() => {
@@ -42,6 +46,10 @@ export default function Home() {
   
   const { data: categories, loading: categoriesLoading, error: categoriesError } = useCategories();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
@@ -50,7 +58,22 @@ export default function Home() {
     setSelectedCategory(categoryId);
   };
   
-  // 加载状态
+  // 加载状态 - 确保服务端和客户端一致
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <Header onSearch={handleSearch} />
+        <div className="container mx-auto px-6 sm:px-8 lg:px-12 py-20">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">加载中...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // 数据加载状态
   if (workflowsLoading || categoriesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">

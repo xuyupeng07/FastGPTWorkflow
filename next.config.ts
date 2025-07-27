@@ -1,11 +1,42 @@
 import type { NextConfig } from "next";
 
+// 检查是否需要隐藏开发指示物
+const hideDevIndicators = process.env.HIDE_DEV_INDICATORS === 'true';
+
 const nextConfig: NextConfig = {
+  // ESLint configuration
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-select'],
   },
   
+  // Completely disable development indicators when hideDevIndicators is true
+  devIndicators: hideDevIndicators ? false : {
+    position: 'bottom-right',
+  },
+  
+  // Disable development overlay (controlled by environment variable)
+  reactStrictMode: !hideDevIndicators,
+  
+  // Disable error overlay in development
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  
+  // Custom webpack configuration to hide dev indicators
+  webpack: (config, { dev, isServer }) => {
+    if (dev && hideDevIndicators) {
+      // 禁用开发模式的一些功能
+      config.devtool = false;
+    }
+    return config;
+  },
+
   // Turbopack configuration
   turbopack: {
     rules: {

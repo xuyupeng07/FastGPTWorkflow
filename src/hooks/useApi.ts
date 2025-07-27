@@ -86,12 +86,7 @@ export function useWorkflows(params?: {
         error: handleApiError(error),
       }));
     }
-  }, [
-    params?.page,
-    params?.limit,
-    params?.category,
-    params?.search
-  ]);
+  }, [JSON.stringify(params)]);
 
   useEffect(() => {
     fetchWorkflows();
@@ -386,7 +381,7 @@ export function useHealthCheck() {
       const response = await apiClient.getHealth();
       setIsHealthy(response.success);
       setLastCheck(new Date());
-    } catch (_error) {
+    } catch {
       setIsHealthy(false);
       setLastCheck(new Date());
     }
