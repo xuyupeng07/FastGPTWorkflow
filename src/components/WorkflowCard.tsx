@@ -376,7 +376,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08 }}
       whileHover={{ y: -2, scale: 1.005 }}
-      className="w-full h-56 group relative"
+      className="w-full h-48 sm:h-52 lg:h-56 group relative"
     >
       {workflow.is_featured && (
          <div className="absolute top-5 right-0 bg-black text-white p-1 rounded-tl-md rounded-bl-md z-10">
@@ -385,13 +385,13 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                   </svg>
                 </div>
        )}
-      <Card className="h-full flex flex-col hover:shadow-md transition-all duration-300 border border-gray-100/50 bg-white rounded-xl overflow-hidden p-1">
+      <Card className="h-full flex flex-col hover:shadow-md transition-all duration-300 border border-gray-100/50 bg-white rounded-xl overflow-hidden p-1 sm:p-1.5">
         {/* 主要内容区域 */}
-        <div className="flex-1 px-5 pt-3 pb-3 overflow-hidden">
+        <div className="flex-1 px-3 sm:px-4 lg:px-5 pt-2 sm:pt-3 pb-1 sm:pb-1.5 overflow-hidden">
           {/* 顶部区域：logo和基本信息 */}
-           <div className="flex gap-2.5 -mb-1">
+           <div className="flex gap-2 sm:gap-2.5 -mb-1">
              {/* 左侧logo */}
-             <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm border border-gray-100">
+             <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl bg-white flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm border border-gray-100">
                {workflow.thumbnail ? (
                  <img 
                    src={workflow.thumbnail} 
@@ -421,22 +421,22 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                {/* 标题 */}
                <div className="mb-1">
                  <div className="flex items-center gap-1.5">
-                   <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1">
+                   <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 line-clamp-1 flex-1">
                      {workflow.title}
                    </h3>
                  </div>
                </div>
                
                {/* 作者信息 */}
-                <div className="flex items-center gap-1.5 mb-0.5 mt-1">
-                  <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center border border-gray-200">
+                <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 mt-0.5 sm:mt-1">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white flex items-center justify-center border border-gray-200">
                     <img 
                       src={workflow.author?.avatar || "/fastgpt.svg"} 
                       alt={workflow.author?.name || "FastGPT"} 
-                      className="w-3.5 h-3.5" 
+                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5" 
                     />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">
                     {/* 显示实际作者名称 */}
                     {workflow.author?.name || 'FastGPT团队'}
                   </span>
@@ -454,7 +454,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
           
           {/* 描述 */}
            <p 
-             className="text-sm text-gray-500 line-clamp-3 leading-relaxed mt-5 cursor-help"
+             className="text-xs sm:text-sm text-gray-500 line-clamp-4 sm:line-clamp-3 leading-relaxed mt-1 sm:mt-2 lg:mt-2.5 cursor-help"
              title={workflow.description}
            >
              {workflow.description}
@@ -462,11 +462,11 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
         </div>
 
         {/* 底部统计和操作 */}
-        <div className="flex items-center justify-between px-5 py-2 border-t border-gray-100 flex-shrink-0 bg-gray-50/30">
+        <div className="flex items-center justify-between px-3 sm:px-4 lg:px-5 py-1.5 sm:py-2 border-t border-gray-100 flex-shrink-0 bg-gray-50/30">
           {/* 统计信息 */}
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500">
+            <span className="flex items-center gap-0.5 sm:gap-1">
+              <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               <span className="font-medium">{usageCount > 999 ? `${Math.floor(usageCount/1000)}k` : usageCount}</span>
             </span>
             <button 
@@ -477,7 +477,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
               } ${liking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               <Heart 
-                className={`w-3 h-3 transition-all ${
+                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-all ${
                   liked ? 'fill-current' : ''
                 } ${liking ? 'animate-pulse' : ''}`} 
               />
@@ -486,14 +486,14 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
           </div>
 
           {/* 操作按钮 */}
-          <div className="flex gap-1.5">
+          <div className="flex gap-1 sm:gap-1.5">
             <Button 
               type="button"
               size="sm"
               variant="outline"
               onClick={handleCopyJson}
               disabled={copying}
-              className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200 h-6 ${
+              className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
                 copying ? 'opacity-70 cursor-not-allowed' : ''
               } ${
                 copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
@@ -501,12 +501,12 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
             >
               {copying ? (
                 <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
                   复制中...
                 </>
               ) : copySuccess ? (
                 <>
-                  <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
+                  <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
                   已复制
                 </>
               ) : (
@@ -517,7 +517,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
                type="button"
                size="sm"
                onClick={handleTryWorkflow}
-               className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200 h-6"
+               className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6"
                disabled={!workflow.demoUrl}
              >
                Try
