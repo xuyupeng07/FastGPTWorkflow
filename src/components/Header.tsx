@@ -27,20 +27,57 @@ export function Header({ onSearch }: HeaderProps) {
   const fetchGitHubStars = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('https://api.github.com/repos/labring/FastGPT');
+      
+      // 检查本地缓存
+      const cachedData = localStorage.getItem('github-stars-cache');
+      const cacheTime = localStorage.getItem('github-stars-cache-time');
+      const now = Date.now();
+      
+      // 如果缓存存在且未过期（30分钟），使用缓存数据
+      if (cachedData && cacheTime && (now - parseInt(cacheTime)) < 30 * 60 * 1000) {
+        setStarCount(cachedData);
+        setIsLoading(false);
+        return;
+      }
+      
+      const response = await fetch('https://api.github.com/repos/labring/FastGPT', {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         const stars = data.stargazers_count;
+        let formattedStars;
+        
         // 格式化星数显示
         if (stars >= 1000) {
-          setStarCount(`${(stars / 1000).toFixed(1)}k`);
+          formattedStars = `${(stars / 1000).toFixed(1)}k`;
         } else {
-          setStarCount(stars.toString());
+          formattedStars = stars.toString();
         }
+        
+        setStarCount(formattedStars);
+        
+        // 缓存数据
+        localStorage.setItem('github-stars-cache', formattedStars);
+        localStorage.setItem('github-stars-cache-time', now.toString());
+      } else if (response.status === 403) {
+        // API速率限制，使用缓存或默认值
+        console.warn('GitHub API rate limit exceeded');
+        setStarCount(cachedData || '25.2k');
+      } else {
+        // 其他API错误
+        console.warn(`GitHub API error: ${response.status}`);
+        setStarCount(cachedData || '25.2k');
       }
     } catch (error) {
       console.error('Failed to fetch GitHub stars:', error);
-      // 保持默认值
+      
+      // 尝试使用缓存数据
+      const cachedData = localStorage.getItem('github-stars-cache');
+      setStarCount(cachedData || '25.2k');
     } finally {
       setIsLoading(false);
     }
@@ -49,8 +86,8 @@ export function Header({ onSearch }: HeaderProps) {
   useEffect(() => {
     setMounted(true);
     fetchGitHubStars();
-    // 每5分钟更新一次星数
-    const interval = setInterval(fetchGitHubStars, 5 * 60 * 1000);
+    // 每30分钟更新一次星数，减少API请求频率
+    const interval = setInterval(fetchGitHubStars, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -183,7 +220,7 @@ export function Header({ onSearch }: HeaderProps) {
                 <div className="hidden sm:flex items-center gap-1 ml-1">
                   <Star className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 group-hover:text-yellow-500 transition-colors duration-200" />
                   <span className="text-xs sm:text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors duration-200">
-                    {!isLoading && starCount ? starCount : '...'}
+                    {isLoading ? '...' : starCount}
                   </span>
                 </div>
               )}
