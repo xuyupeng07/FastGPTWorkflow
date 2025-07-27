@@ -5,16 +5,19 @@
  * 将现有的静态工作流数据迁移到PostgreSQL数据库
  */
 
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-// 数据库连接配置
-const DATABASE_URL = 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+// 加载环境变量
+require('dotenv').config();
 
-// 创建数据库客户端
-const client = new Client({
-  connectionString: 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true'
+// 数据库连接配置
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+
+// 创建数据库连接池
+const pool = new Pool({
+  connectionString: DATABASE_URL
 });
 
 // 导入现有数据

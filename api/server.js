@@ -12,33 +12,72 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 
+// 加载环境变量
+require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 3002;
 
 // 数据库连接配置
-const DATABASE_URL = 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
 
 // 创建数据库连接池（性能优化）
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: false,
-  max: 10, // 最大连接数
-  idleTimeoutMillis: 30000, // 空闲连接超时时间
-  connectionTimeoutMillis: 10000, // 连接超时时间增加到10秒
-  query_timeout: 30000, // 查询超时时间
+  max: parseInt(process.env.DB_MAX_CONNECTIONS) || 10, // 最大连接数
+  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 30000, // 空闲连接超时时间
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT) || 10000, // 连接超时时间
+  query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT) || 30000, // 查询超时时间
 });
 
 // 中间件配置 - 必须在API端点之前
+// 支持本地开发和公网部署的CORS配置
+const getDefaultOrigins = () => [
+  // 本地开发环境
+  'http://localhost:3000',
+  'http://localhost:3001', 
+  'http://localhost:3002',
+  'http://localhost:3003',
+  // 公网部署环境
+  'https://qktyoucivudx.sealoshzh.site',
+  'https://vjugeqdfnhuc.sealoshzh.site'
+];
+
+// 从环境变量获取允许的域名，如果没有则使用默认值
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : getDefaultOrigins();
+
+console.log('🌐 允许的CORS域名:', allowedOrigins);
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
-  credentials: true
+  origin: function (origin, callback) {
+    // 允许没有origin的请求（如移动应用、Postman等）
+    if (!origin) return callback(null, true);
+    
+    // 检查origin是否在允许列表中
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // 对于开发环境，也允许任何localhost和127.0.0.1的请求
+      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('sealoshzh.site')) {
+        callback(null, true);
+      } else {
+        callback(new Error('不允许的CORS请求'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json({ limit: '50mb' })); // 设置请求体大小限制为50MB
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // 设置表单数据大小限制为50MB
 app.use(express.static('public'));
 
 // 确保uploads目录存在
-const uploadsDir = path.join(__dirname, '../public/uploads');
+const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'public/uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -69,7 +108,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 限制文件大小为5MB
+    fileSize: parseInt(process.env.UPLOAD_MAX_SIZE) || (5 * 1024 * 1024) // 限制文件大小，默认5MB
   }
 });
 

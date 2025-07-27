@@ -1,8 +1,11 @@
 const { Pool } = require('pg');
 
-// 数据库连接配置
+// 加载环境变量
+require('dotenv').config();
+
+// 数据库连接
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true'
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true'
 });
 
 async function removeCategoryFields() {

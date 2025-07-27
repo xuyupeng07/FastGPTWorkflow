@@ -1,9 +1,12 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+// 加载环境变量
+require('dotenv').config();
+
 // 数据库连接配置
-const DATABASE_URL = 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
 
 const client = new Client({
   connectionString: DATABASE_URL,

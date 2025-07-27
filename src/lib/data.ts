@@ -281,7 +281,7 @@ export const workflows: Workflow[] = [
       dataset: {
         datasets: [],
         similarity: 0.4,
-        limit: 3000,
+        limit: parseInt(process.env.DATA_QUERY_LIMIT || '3000'),
         searchMode: 'embedding',
         usingReRank: true,
         rerankModel: '',
