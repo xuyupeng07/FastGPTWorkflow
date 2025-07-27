@@ -108,11 +108,13 @@ function AdminContent() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   
-  const [categoryFormData, setCategoryFormData] = useState({
-    id: '',
+  const [categoryFormData, setCategoryFormData] = useState<{
+    name: string;
+    description: string;
+    sort_order?: number;
+  }>({
     name: '',
-    description: '',
-    sort_order: 0
+    description: ''
   });
 
   // 表单状态
@@ -403,20 +405,14 @@ function AdminContent() {
   // 分类管理函数
   const resetCategoryForm = () => {
     setCategoryFormData({
-      id: '',
       name: '',
-      description: '',
-      sort_order: 0
+      description: ''
     });
   };
 
   // 创建分类
   const handleCreateCategory = async () => {
     // 表单验证
-    if (!categoryFormData.id.trim()) {
-      toast.error('请输入分类ID');
-      return;
-    }
     if (!categoryFormData.name.trim()) {
       toast.error('请输入分类名称');
       return;
@@ -424,12 +420,17 @@ function AdminContent() {
 
 
     try {
+      // 创建分类时不发送sort_order，让后端自动处理
+      const createData = {
+        name: categoryFormData.name,
+        description: categoryFormData.description
+      };
       const response = await fetch(`${API_BASE_URL}/admin/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(categoryFormData),
+        body: JSON.stringify(createData),
       });
 
       const result = await response.json();
@@ -509,7 +510,6 @@ function AdminContent() {
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setCategoryFormData({
-      id: category.id,
       name: category.name,
       description: category.description || '',
       sort_order: category.sort_order || 0
@@ -647,27 +647,28 @@ function AdminContent() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">工作流管理后台</h1>
-          <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">工作流管理后台</h1>
+          <p className="text-sm sm:text-base text-gray-600">管理工作流卡片的增删改查操作</p>
         </div>
         <Button
           onClick={logout}
-          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
+          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2 w-fit"
         >
           <LogOut className="h-4 w-4" />
-          登出
+          <span className="hidden sm:inline">登出</span>
+          <span className="sm:hidden">退出</span>
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
-          <TabsTrigger value="workflows" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">工作流管理</TabsTrigger>
-          <TabsTrigger value="categories" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">分类管理</TabsTrigger>
-          <TabsTrigger value="authors" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">作者管理</TabsTrigger>
-          <TabsTrigger value="stats" className="rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">统计信息</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+        <TabsList className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 w-full overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="workflows" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">工作流管理</TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">分类管理</TabsTrigger>
+          <TabsTrigger value="authors" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">作者管理</TabsTrigger>
+          <TabsTrigger value="stats" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">统计信息</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workflows" className="space-y-6">
@@ -678,7 +679,7 @@ function AdminContent() {
               <CardDescription>管理所有工作流卡片</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -690,31 +691,33 @@ function AdminContent() {
                     />
                   </div>
                 </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-48">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="选择分类" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="all">所有分类</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
-                      className="bg-black text-white hover:bg-gray-800"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      新建工作流
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
+                <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="选择分类" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">所有分类</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                     <DialogTrigger asChild>
+                       <Button 
+                         onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
+                         className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto"
+                       >
+                         <Plus className="h-4 w-4 mr-2" />
+                         <span className="hidden sm:inline">新建工作流</span>
+                         <span className="sm:hidden">新建</span>
+                       </Button>
+                     </DialogTrigger>
+                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
                     <DialogHeader>
                       <DialogTitle>创建新工作流</DialogTitle>
                       <DialogDescription>
@@ -879,7 +882,8 @@ function AdminContent() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </div>
+                 </div>
+               </div>
 
               {/* 工作流表格 */}
               <div className="rounded-md border">
@@ -1349,15 +1353,7 @@ function AdminContent() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div>
-              <Label htmlFor="category-id">分类ID</Label>
-              <Input
-                id="category-id"
-                value={categoryFormData.id}
-                onChange={(e) => setCategoryFormData({ ...categoryFormData, id: e.target.value })}
-                placeholder="例如: data-analysis"
-              />
-            </div>
+
             <div>
               <Label htmlFor="category-name">分类名称</Label>
               <Input
@@ -1406,16 +1402,7 @@ function AdminContent() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div>
-              <Label htmlFor="edit-category-id">分类ID</Label>
-              <Input
-                id="edit-category-id"
-                value={categoryFormData.id}
-                onChange={(e) => setCategoryFormData({ ...categoryFormData, id: e.target.value })}
-                placeholder="例如: data-analysis"
-                disabled
-              />
-            </div>
+
             <div>
               <Label htmlFor="edit-category-name">分类名称</Label>
               <Input

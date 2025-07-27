@@ -803,27 +803,24 @@ app.delete('/api/admin/workflows/:id', async (req, res) => {
 // 创建分类
 app.post('/api/admin/categories', async (req, res) => {
   try {
-    const { id, name, description, sort_order } = req.body;
+    const { name, description, sort_order } = req.body;
 
-    if (!id || !name) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        error: '分类ID和名称不能为空'
+        error: '分类名称不能为空'
       });
     }
 
-    // 检查分类ID是否已存在
-    const existingCategory = await pool.query(
-      'SELECT id FROM workflow_categories WHERE id = $1',
-      [id]
-    );
-
-    if (existingCategory.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: '分类ID已存在'
-      });
-    }
+    // 自动生成分类ID（基于名称的拼音或英文，加上时间戳确保唯一性）
+    const timestamp = Date.now();
+    const id = name.toLowerCase()
+      .replace(/[\u4e00-\u9fa5]/g, '') // 移除中文字符
+      .replace(/[^a-z0-9]/g, '-') // 将非字母数字字符替换为连字符
+      .replace(/-+/g, '-') // 合并多个连字符
+      .replace(/^-|-$/g, '') // 移除开头和结尾的连字符
+      || 'category'; // 如果处理后为空，使用默认值
+    const finalId = `${id}-${timestamp}`;
 
     // 检查分类名称是否已存在
     const existingName = await pool.query(
@@ -858,7 +855,7 @@ app.post('/api/admin/categories', async (req, res) => {
 
     const result = await pool.query(
       'INSERT INTO workflow_categories (id, name, description, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
-      [id, name, description || null, finalSortOrder]
+      [finalId, name, description || null, finalSortOrder]
     );
 
     res.json({
