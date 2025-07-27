@@ -11,15 +11,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 默认管理员凭据（在生产环境中应该从环境变量或数据库获取）
-const DEFAULT_ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin123'
-};
-
 // 从环境变量获取管理员凭据
-const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME || DEFAULT_ADMIN_CREDENTIALS.username;
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || DEFAULT_ADMIN_CREDENTIALS.password;
+const ADMIN_USERNAME = process.env.NEXT_PUBLIC_ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -64,6 +58,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (credentials: { username: string; password: string }): Promise<boolean> => {
     try {
+      // 检查环境变量是否已配置
+      if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+        console.error('管理员凭据未在环境变量中配置');
+        return false;
+      }
+      
       // 简单的用户名密码验证
       if (credentials.username === ADMIN_USERNAME && credentials.password === ADMIN_PASSWORD) {
         // 生成一个简单的token（在生产环境中应该使用更安全的方法）

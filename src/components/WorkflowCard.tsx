@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Workflow } from '@/lib/types';
 import { WorkflowExperience } from '@/components/WorkflowExperience';
 import { motion } from 'framer-motion';
 import { Users, Heart, Eye, Sparkles, Zap, Copy, CheckCircle, Loader2 } from 'lucide-react';
 import { getUserSessionId } from '@/lib/userSession';
 import { apiCache } from '@/lib/api';
+import { getApiUrl } from '@/lib/config';
 
 interface WorkflowCardProps {
   workflow: Workflow;
@@ -93,7 +95,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
       }
       
       // 如果没有JSON源码，从API获取配置数据
-      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
+      const API_BASE_URL = getApiUrl();
       const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}`);
       
       if (!response.ok) {
@@ -173,7 +175,7 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
   // 记录用户行为的函数
   const recordUserAction = useCallback(async (actionType: string) => {
     try {
-      const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
+      const API_BASE_URL = getApiUrl();
       const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/actions`, {
         method: 'POST',
         headers: {
@@ -245,16 +247,12 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
     // 防抖延迟100ms
     fetchLikeStatusRef.current = setTimeout(async () => {
       try {
-        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
+        const API_BASE_URL = getApiUrl();
         const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/like-status?user_session_id=${sessionId}`, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300' // 5分钟缓存
-          },
-          // 添加跨域和超时配置
-          mode: 'cors',
-          credentials: 'same-origin'
+            'Content-Type': 'application/json'
+          }
         });
         
         if (response.ok) {
@@ -338,15 +336,13 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
     // 延迟50ms发送请求，给UI更新时间
     handleLikeRef.current = setTimeout(async () => {
       try {
-        const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
+        const API_BASE_URL = getApiUrl();
         
         const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/actions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          mode: 'cors',
-          credentials: 'same-origin',
           body: JSON.stringify({
             action_type: 'like',
             user_session_id: userSessionId
@@ -464,12 +460,16 @@ export function WorkflowCard({ workflow, index = 0, onDataUpdate }: WorkflowCard
            </div>
           
           {/* 描述 */}
-           <p 
-             className="text-xs sm:text-sm text-gray-500 line-clamp-4 sm:line-clamp-3 leading-relaxed mt-1 sm:mt-2 lg:mt-2.5 cursor-help"
-             title={workflow.description}
-           >
-             {workflow.description}
-           </p>
+          <Tooltip 
+            content={workflow.description}
+            side="top"
+            align="start"
+            className="max-w-sm text-sm leading-relaxed bg-white text-gray-900 border-gray-200 shadow-xl"
+          >
+            <p className="text-xs sm:text-sm text-gray-500 line-clamp-4 sm:line-clamp-3 leading-relaxed mt-1 sm:mt-2 lg:mt-2.5 cursor-pointer">
+              {workflow.description}
+            </p>
+          </Tooltip>
         </div>
 
         {/* 底部统计和操作 */}

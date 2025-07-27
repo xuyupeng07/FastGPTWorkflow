@@ -396,7 +396,7 @@ export function useHealthCheck() {
     checkHealth();
     
     // 每30秒检查一次健康状态
-    const interval = setInterval(checkHealth, parseInt(process.env.HEALTH_CHECK_INTERVAL || '30000'));
+    const interval = setInterval(checkHealth, 30000);
     
     return () => clearInterval(interval);
   }, [checkHealth]);

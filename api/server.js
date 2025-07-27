@@ -19,7 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 // 数据库连接配置
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/fastgpt_workflow';
 
 // 创建数据库连接池（性能优化）
 const pool = new Pool({

@@ -13,7 +13,7 @@ const path = require('path');
 require('dotenv').config();
 
 // 数据库连接配置
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/fastgpt_workflow';
 
 // 创建数据库客户端
 const client = new Client({

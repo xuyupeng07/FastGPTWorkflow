@@ -16,6 +16,7 @@ import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock } from '
 import { toast } from 'sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AdminLogin from '@/components/AdminLogin';
+import { getApiUrl } from '@/lib/config';
 
 interface Workflow {
   id: string;
@@ -58,7 +59,7 @@ interface Author {
 
 
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3002/api';
+const API_BASE_URL = getApiUrl();
 
 function AdminContent() {
   const { logout } = useAuth();
@@ -717,7 +718,7 @@ function AdminContent() {
                          <span className="sm:hidden">新建</span>
                        </Button>
                      </DialogTrigger>
-                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
+                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white scrollbar-custom">
                     <DialogHeader>
                       <DialogTitle>创建新工作流</DialogTitle>
                       <DialogDescription>
@@ -1175,7 +1176,7 @@ function AdminContent() {
 
       {/* 编辑对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white scrollbar-custom">
           <DialogHeader>
             <DialogTitle>编辑工作流</DialogTitle>
             <DialogDescription>

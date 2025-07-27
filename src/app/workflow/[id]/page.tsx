@@ -30,6 +30,7 @@ import {
 import Link from 'next/link';
 import { useWorkflow, useUserActions } from '@/hooks/useApi';
 import { Workflow } from '@/lib/types';
+import { getApiBaseUrl } from '@/lib/config';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -125,7 +126,7 @@ export default function WorkflowDetailPage() {
     
     try {
       // 直接从API获取最新数据
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+      const API_BASE_URL = getApiBaseUrl();
       const response = await fetch(`${API_BASE_URL}/api/workflows/${workflow.id}`);
       const result = await response.json();
       

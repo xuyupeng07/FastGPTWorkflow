@@ -5,7 +5,7 @@ require('dotenv').config();
 
 // 数据库连接
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:bzncrmdw@dbconn.sealoshzh.site:48900/?directConnection=true'
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/fastgpt_workflow'
 });
 
 async function removeCategoryFields() {
