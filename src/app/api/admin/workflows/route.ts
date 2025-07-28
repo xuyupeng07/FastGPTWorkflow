@@ -1,29 +1,20 @@
 import { NextRequest } from 'next/server';
-import { Pool } from 'pg';
-
-// 创建数据库连接池
-export const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
+import { pool } from '@/lib/db';
 import { 
   createSuccessResponse, 
-  createErrorResponse, 
-  withTransaction
+  createErrorResponse 
 } from '@/lib/api-utils';
 
-// GET /api/admin/workflows - 获取所有工作流（包括未发布的）
+// GET /api/admin/workflows - 获取所有工作流列表（包括未发布的）
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '50');
     
+    // 查询所有工作流列表（不过滤is_published）
     let query = `
       SELECT 
         w.*,
@@ -62,7 +53,17 @@ export async function GET(request: NextRequest) {
     
     const result = await pool.query(query, params);
     
-    // 获取总数
+    // 为每个工作流格式化数据
+    const workflowsWithExtras = result.rows.map(workflow => ({
+      ...workflow,
+      thumbnail: workflow.thumbnail_url || '/placeholder.svg',
+      author: {
+        name: workflow.author_name,
+        avatar: workflow.author_avatar
+      }
+    }));
+    
+    // 总数查询（不过滤is_published）
     let countQuery = `
       SELECT COUNT(*) as total
       FROM workflows w
@@ -87,18 +88,8 @@ export async function GET(request: NextRequest) {
     const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
     
-    // 为每个工作流格式化作者信息
-    const workflowsWithThumbnail = result.rows.map(workflow => ({
-      ...workflow,
-      thumbnail: workflow.thumbnail_url || '/placeholder.svg', // 映射thumbnail_url为thumbnail
-      author: {
-        name: workflow.author_name,
-        avatar: workflow.author_avatar
-      }
-    }));
-    
     return createSuccessResponse(
-      workflowsWithThumbnail,
+      workflowsWithExtras,
       undefined,
       {
         page: parseInt(page.toString()),
@@ -108,8 +99,8 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('获取管理工作流列表失败:', error);
-    return createErrorResponse('获取管理工作流列表失败');
+    console.error('获取管理员工作流列表失败:', error);
+    return createErrorResponse('获取管理员工作流列表失败');
   }
 }
 
@@ -134,30 +125,21 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('缺少必填字段', 400);
     }
 
-    const result = await withTransaction(async (client) => {
-      // 生成唯一ID
-      const id = title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
-      
-      // 创建工作流 - 包含所有必需字段
-      const workflowResult = await client.query(`
-        INSERT INTO workflows (
-          id, title, description, category_id, author_id,
-          json_source, thumbnail_url, demo_url, is_featured, is_published
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-      `, [
+    // 生成唯一ID
+    const id = title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+
+    const result = await pool.query(`
+      INSERT INTO workflows (
         id, title, description, category_id, author_id,
         json_source, thumbnail_url, demo_url, is_featured, is_published
-      ]);
-      
-      const workflow = workflowResult.rows[0];
-      
-      // 不再需要插入截图、说明等额外信息
-      
-      return workflow;
-    });
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      id, title, description, category_id, author_id,
+      json_source, thumbnail_url, demo_url, is_featured, is_published
+    ]);
 
-    return createSuccessResponse(result, '工作流创建成功');
+    return createSuccessResponse(result.rows[0], '工作流创建成功');
   } catch (error) {
     console.error('创建工作流失败:', error);
     return createErrorResponse('创建工作流失败');

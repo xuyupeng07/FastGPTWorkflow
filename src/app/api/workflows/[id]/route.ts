@@ -73,7 +73,7 @@ export async function PUT(
     const {
       title,
       description,
-
+      author_id,
       category_id,
       demo_url,
       config,
@@ -86,18 +86,18 @@ export async function PUT(
       UPDATE workflows SET
         title = COALESCE($2, title),
         description = COALESCE($3, description),
-
-        category_id = COALESCE($4, category_id),
-         demo_url = COALESCE($5, demo_url),
-         config = COALESCE($6, config),
-         thumbnail_url = COALESCE($7, thumbnail_url),
-         is_featured = COALESCE($8, is_featured),
-         is_published = COALESCE($9, is_published),
+        author_id = COALESCE($4, author_id),
+        category_id = COALESCE($5, category_id),
+         demo_url = COALESCE($6, demo_url),
+         config = COALESCE($7, config),
+         thumbnail_url = COALESCE($8, thumbnail_url),
+         is_featured = COALESCE($9, is_featured),
+         is_published = COALESCE($10, is_published),
          updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `, [
-      id, title, description, category_id,
+      id, title, description, author_id, category_id,
        demo_url,
        config ? JSON.stringify(config) : null,
        thumbnail_url, is_featured, is_published

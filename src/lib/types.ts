@@ -5,7 +5,7 @@ export interface WorkflowCard {
   title: string;
   description: string;
   category: string;
-  thumbnail: string;
+  thumbnail: string | null;
   usageCount: number;
   createdAt: string;
   json_source?: string;
@@ -103,7 +103,7 @@ export interface Workflow {
   title: string;
   description: string;
   category: WorkflowCategory;
-  thumbnail: string;
+  thumbnail: string | null;
 
   usageCount: number;
   likeCount: number;

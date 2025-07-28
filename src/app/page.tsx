@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { WorkflowGrid } from '@/components/WorkflowGrid';
+import { SideEffects } from '@/components/SideEffects';
+import { TechBackground } from '@/components/TechBackground';
 import { HydrationSafeWrapper, useDOMProtection, useSafeRender } from '@/components/HydrationSafeWrapper';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useWorkflows, useCategories } from '@/hooks/useApi';
@@ -59,7 +61,7 @@ export default function Home() {
   // 防止水合错误的早期返回
   if (!mounted || !canRender) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
         <div className="container mx-auto px-4 py-20">
           <div className="flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -81,7 +83,7 @@ export default function Home() {
   // 加载状态 - 确保服务端和客户端一致
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
         <Header onSearch={handleSearch} />
         <div className="container mx-auto px-6 sm:px-8 lg:px-12 py-20">
           <div className="flex items-center justify-center">
@@ -96,7 +98,7 @@ export default function Home() {
   // 数据加载状态
   if (workflowsLoading || categoriesLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
         <Header onSearch={handleSearch} />
         <div className="container mx-auto px-6 sm:px-8 lg:px-12 py-20">
           <div className="flex items-center justify-center">
@@ -149,16 +151,20 @@ export default function Home() {
           </div>
         }
       >
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          <Header onSearch={handleSearch} />
-          <WorkflowGrid 
-            workflows={workflows || []} 
-            categories={categories || []}
-            searchQuery={searchQuery}
-            onDataUpdate={refetchWorkflows}
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-          />
+        <div className="min-h-screen relative overflow-hidden">
+          <TechBackground />
+          <SideEffects />
+          <div className="relative z-10">
+            <Header onSearch={handleSearch} />
+            <WorkflowGrid 
+              workflows={workflows || []} 
+              categories={categories || []}
+              searchQuery={searchQuery}
+              onDataUpdate={refetchWorkflows}
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+            />
+          </div>
         </div>
       </HydrationSafeWrapper>
     </ErrorBoundary>

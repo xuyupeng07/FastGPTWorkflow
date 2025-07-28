@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Search, Star } from 'lucide-react';
+import { HeaderBackground } from './HeaderBackground';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -95,20 +96,21 @@ export function Header({ onSearch }: HeaderProps) {
   // 防止水合不匹配 - 在客户端挂载前显示静态版本
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" suppressHydrationWarning>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b border-blue-200/30 bg-gradient-to-r from-slate-50/95 via-blue-50/95 to-slate-50/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-slate-50/80 supports-[backdrop-filter]:via-blue-50/80 supports-[backdrop-filter]:to-slate-50/80 shadow-lg shadow-blue-100/20 relative overflow-hidden" suppressHydrationWarning>
+        <HeaderBackground />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between relative z-10">
           {/* Logo */}
-          <Link href="/" className="flex items-center flex-shrink-0">
+          <a href="https://fastgpt.cn/" className="flex items-center flex-shrink-0" target="_blank" rel="noopener noreferrer">
             <Image
               src="/fastgpt-withtext.svg"
               alt="FastGPT"
-              width={140}
-              height={36}
-              className="h-8 sm:h-9 w-auto object-contain"
+              width={180}
+              height={46}
+              className="h-10 sm:h-11 lg:h-12 w-auto object-contain"
               priority
               suppressHydrationWarning
             />
-          </Link>
+          </a>
 
           {/* 中间搜索栏 - 在小屏幕上隐藏 */}
           <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
@@ -150,8 +152,9 @@ export function Header({ onSearch }: HeaderProps) {
         </div>
         
         {/* 移动端搜索栏 */}
-        <div className="md:hidden border-t bg-white/95 backdrop-blur">
-          <div className="container mx-auto px-4 py-3">
+        <div className="md:hidden border-t border-blue-200/30 bg-gradient-to-r from-slate-50/95 via-blue-50/95 to-slate-50/95 backdrop-blur-xl relative">
+          <HeaderBackground />
+          <div className="container mx-auto px-4 py-3 relative z-10">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -173,21 +176,22 @@ export function Header({ onSearch }: HeaderProps) {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60"
+      className="sticky top-0 z-50 w-full border-b border-blue-200/30 bg-gradient-to-r from-slate-50/95 via-blue-50/95 to-slate-50/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-slate-50/80 supports-[backdrop-filter]:via-blue-50/80 supports-[backdrop-filter]:to-slate-50/80 shadow-lg shadow-blue-100/20 relative overflow-hidden"
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between">
+      <HeaderBackground />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between relative z-10">
         {/* Logo */}
-        <Link href="/" className="flex items-center flex-shrink-0">
+        <a href="https://fastgpt.cn/" className="flex items-center flex-shrink-0" target="_blank" rel="noopener noreferrer">
           <Image
             src="/fastgpt-withtext.svg"
             alt="FastGPT"
-            width={140}
-            height={36}
-            className="h-8 sm:h-9 w-auto object-contain"
+            width={180}
+            height={46}
+            className="h-10 sm:h-11 lg:h-12 w-auto object-contain"
             priority
             suppressHydrationWarning
           />
-        </Link>
+        </a>
 
         {/* 中间搜索栏 - 在小屏幕上隐藏 */}
         <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
@@ -237,8 +241,9 @@ export function Header({ onSearch }: HeaderProps) {
       </div>
       
       {/* 移动端搜索栏 */}
-      <div className="md:hidden border-t bg-white/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-3">
+      <div className="md:hidden border-t border-blue-200/30 bg-gradient-to-r from-slate-50/95 via-blue-50/95 to-slate-50/95 backdrop-blur-xl relative">
+        <HeaderBackground />
+        <div className="container mx-auto px-4 py-3 relative z-10">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input

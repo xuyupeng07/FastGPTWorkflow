@@ -427,21 +427,23 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                    height={56}
                    className="w-full h-full object-cover rounded-xl"
                    onError={(e) => {
-                     // 如果图片加载失败，显示分类图标
+                     // 如果图片加载失败，显示fastgpt.svg
                      const target = e.target as HTMLImageElement;
                      target.style.display = 'none';
                      const parent = target.parentElement;
                      if (parent) {
-                       parent.innerHTML = `<div class="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center"><div class="text-gray-600 text-lg">📋</div></div>`;
+                       parent.innerHTML = `<img src="/fastgpt.svg" alt="FastGPT" class="w-full h-full object-contain rounded-xl" />`;
                      }
                    }}
                  />
                ) : (
-                 <div className="w-14 h-14 rounded-xl bg-white shadow-sm flex items-center justify-center">
-                   <div className="text-gray-600 text-lg">
-                     📋
-                   </div>
-                 </div>
+                 <Image 
+                   src="/fastgpt.svg" 
+                   alt="FastGPT"
+                   width={56}
+                   height={56}
+                   className="w-full h-full object-contain rounded-xl"
+                 />
                )}
              </div>
              
@@ -462,9 +464,9 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                     <Image 
                       src={workflow.author?.avatar || "/fastgpt.svg"} 
                       alt={workflow.author?.name || "FastGPT"} 
-                      width={14}
-                      height={14}
-                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-3.5 lg:h-3.5" 
+                      width={18}
+                      height={18}
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" 
                     />
                   </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700">

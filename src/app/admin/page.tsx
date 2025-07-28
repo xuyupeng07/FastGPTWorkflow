@@ -172,8 +172,8 @@ function AdminContent() {
     try {
       setLoading(true);
       
-      // 优先加载关键数据
-      const workflowsRes = await fetch(`${API_BASE_URL}/workflows?limit=50`);
+      // 优先加载关键数据 - 使用admin API获取所有工作流（包括未发布的）
+      const workflowsRes = await fetch(`${API_BASE_URL}/admin/workflows?limit=50`);
       const workflowsData = await workflowsRes.json();
       if (workflowsData.success) {
         setWorkflows(workflowsData.data);
@@ -970,9 +970,13 @@ function AdminContent() {
 
                         <TableCell>
                           <div className="flex flex-col space-y-1">
-                            {workflow.is_published && (
+                            {workflow.is_published ? (
                               <Badge variant="outline" className="text-green-600 border-green-600">
                                 已发布
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-gray-600 border-gray-600">
+                                未发布
                               </Badge>
                             )}
                             {workflow.is_featured && (

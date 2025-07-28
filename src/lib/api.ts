@@ -186,7 +186,7 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
       name: apiWorkflow.category_name,
     },
 
-    thumbnail: apiWorkflow.thumbnail_url || '/workflows/default.jpg',
+    thumbnail: apiWorkflow.thumbnail_url || null,
 
     usageCount: apiWorkflow.usage_count,
     likeCount: apiWorkflow.like_count,

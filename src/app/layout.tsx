@@ -3,8 +3,8 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FastGPT案例分享",
-  description: "FastGPT工作流案例分享平台，发现和分享优质的AI工作流模板",
+  title: "FastGPT应用分享平台",
+  description: "FastGPT工作流应用分享平台，发现和分享优质的AI工作流模板",
   icons: {
     icon: "/fastgpt.svg",
     shortcut: "/fastgpt.svg",
