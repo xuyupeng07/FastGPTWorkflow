@@ -227,13 +227,6 @@ export default function WorkflowDetailPage() {
                 <CardHeader>
                   <div className="flex flex-wrap gap-2 mb-4">
                     <Badge variant="secondary">{workflow.category.toString()}</Badge>
-                    <Badge 
-                      variant={workflow.difficulty === 'beginner' ? 'default' : 
-                              workflow.difficulty === 'intermediate' ? 'secondary' : 'destructive'}
-                    >
-                      {workflow.difficulty === 'beginner' ? '初级' : 
-                       workflow.difficulty === 'intermediate' ? '中级' : '高级'}
-                     </Badge>
                   </div>
                   <CardTitle className="text-3xl font-bold text-gray-800">
                     {workflow.title}

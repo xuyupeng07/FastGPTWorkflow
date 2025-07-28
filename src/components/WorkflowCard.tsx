@@ -112,8 +112,25 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       
       const result = await response.json();
       
-      if (result.success && result.data.config) {
-        const jsonString = JSON.stringify(result.data.config, null, 2);
+      if (result.success && result.data) {
+        let jsonString = '';
+        
+        // 优先使用json_source，如果没有则尝试使用config
+        if (result.data.json_source) {
+          try {
+            // 尝试解析并格式化JSON
+            const parsed = JSON.parse(result.data.json_source);
+            jsonString = JSON.stringify(parsed, null, 2);
+          } catch {
+            // 如果解析失败，直接使用原始字符串
+            jsonString = result.data.json_source;
+          }
+        } else if (result.data.config) {
+          jsonString = JSON.stringify(result.data.config, null, 2);
+        } else {
+          throw new Error('工作流没有可用的配置数据');
+        }
+        
         setCachedConfig(jsonString); // 缓存配置
         await navigator.clipboard.writeText(jsonString);
         setCopySuccess(true);
@@ -342,13 +359,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       try {
         const API_BASE_URL = getApiUrl();
         
-        const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/actions`, {
+        const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}/like`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            action_type: 'like',
             user_session_id: userSessionId
           })
         });

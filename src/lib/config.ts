@@ -2,29 +2,19 @@
 
 /**
  * 获取API基础URL
- * 优先级：环境变量 > 生产环境默认值 > 开发环境默认值
+ * 现在前后端合并，统一使用Next.js的API路由
  */
 export function getApiBaseUrl(): string {
-  // 如果设置了NEXT_PUBLIC_API_URL环境变量，直接使用
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  
-  // 生产环境使用相对路径
-  if (process.env.NODE_ENV === 'production') {
-    return '';
-  }
-  
-  // 开发环境默认值
-  return 'http://localhost:3002';
+  // 前后端合并后，始终使用相对路径
+  return '';
 }
 
 /**
  * 获取完整的API URL（包含/api路径）
  */
 export function getApiUrl(): string {
-  const baseUrl = getApiBaseUrl();
-  return baseUrl ? `${baseUrl}/api` : '/api';
+  // 统一使用Next.js的API路由
+  return '/api';
 }
 
 /**

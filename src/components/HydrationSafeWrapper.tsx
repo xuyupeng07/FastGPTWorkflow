@@ -144,7 +144,7 @@ export function useDOMProtection() {
               // 检查是否是插件注入的元素
               if (element.hasAttribute('data-extension-id') || 
                   element.hasAttribute('data-chrome-extension') ||
-                  element.className.includes('extension')) {
+                  (typeof element.className === 'string' && element.className.includes('extension'))) {
                 try {
                   element.remove();
                 } catch (error) {

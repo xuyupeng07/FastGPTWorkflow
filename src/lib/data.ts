@@ -34,12 +34,9 @@ export const workflows: Workflow[] = [
     id: '1',
     title: '智能客服问答系统',
     description: '基于知识库的智能客服，支持多轮对话和情感分析',
-    longDescription: '这是一个完整的智能客服解决方案，集成了知识库检索、意图识别、情感分析等功能。能够处理常见的客户咨询，提供准确的回答，并在必要时转接人工客服。',
     category: categories[1]!,
 
     thumbnail: '/workflows/customer-service.jpg',
-    screenshots: ['/workflows/customer-service-1.jpg', '/workflows/customer-service-2.jpg'],
-    difficulty: 'intermediate',
 
     usageCount: 1250,
     likeCount: 89,
@@ -85,28 +82,16 @@ export const workflows: Workflow[] = [
       }
     },
     demoUrl: 'https://demo.fastgpt.com/customer-service',
-    instructions: [
-      '1. 配置知识库：上传相关文档和FAQ',
-      '2. 设置意图识别模型',
-      '3. 配置回复模板',
-      '4. 测试对话流程'
-    ],
-    requirements: [
-      'FastGPT账号',
-      '知识库文档',
-      '基础的对话设计经验'
-    ]
+
+
   },
   {
     id: '2',
     title: '文章自动生成器',
     description: '根据关键词和大纲自动生成高质量文章内容',
-    longDescription: '强大的内容创作工具，能够根据用户提供的关键词、大纲或主题，自动生成结构清晰、内容丰富的文章。支持多种文体风格，适用于博客、新闻、营销文案等场景。',
     category: categories[2]!,
 
     thumbnail: '/workflows/content-creation.jpg',
-    screenshots: ['/workflows/content-creation-1.jpg'],
-    difficulty: 'beginner',
 
     usageCount: 2100,
     likeCount: 156,
@@ -149,28 +134,16 @@ export const workflows: Workflow[] = [
       version: '1.0'
     },
     demoUrl: 'https://demo.fastgpt.com/content-creation',
-    instructions: [
-      '1. 输入文章主题和关键词',
-      '2. 选择写作风格和目标长度',
-      '3. 系统自动生成大纲',
-      '4. 生成完整文章内容'
-    ],
-    requirements: [
-      'FastGPT账号',
-      '明确的写作主题',
-      '基础的内容策划能力'
-    ]
+
+
   },
   {
     id: '3',
     title: '数据报告分析助手',
     description: '自动分析数据并生成专业的分析报告',
-    longDescription: '专业的数据分析工具，能够处理各种格式的数据文件，进行统计分析、趋势预测，并自动生成包含图表和洞察的专业报告。适用于业务分析、市场研究等场景。',
     category: categories[3]!,
 
     thumbnail: '/workflows/data-analysis.jpg',
-    screenshots: ['/workflows/data-analysis-1.jpg', '/workflows/data-analysis-2.jpg'],
-    difficulty: 'advanced',
 
     usageCount: 890,
     likeCount: 67,
@@ -220,28 +193,16 @@ export const workflows: Workflow[] = [
       version: '1.0'
     },
     demoUrl: 'https://demo.fastgpt.com/data-analysis',
-    instructions: [
-      '1. 上传CSV或Excel数据文件',
-      '2. 选择分析维度和指标',
-      '3. 配置图表类型和样式',
-      '4. 生成并下载分析报告'
-    ],
-    requirements: [
-      'FastGPT账号',
-      '结构化数据文件',
-      '数据分析基础知识'
-    ]
+
+
   },
   {
     id: '4',
     title: 'Claude4AI助手',
     description: '使用Claude4构建的AI助手',
-    longDescription: '基于Claude4模型构建的智能AI助手，支持多轮对话、推理分析和文件处理。配置了最新的Claude Sonnet 4模型，具备强大的理解和生成能力，适用于各种复杂的对话场景。',
     category: categories[1]!, // 客服助手
 
     thumbnail: '/workflows/claude4-assistant.jpg',
-    screenshots: ['/workflows/claude4-assistant-1.jpg'],
-    difficulty: 'beginner',
 
     usageCount: 1250,
     likeCount: 89,
@@ -324,16 +285,8 @@ export const workflows: Workflow[] = [
       }
     },
     demoUrl: 'https://demo.fastgpt.com/claude4-assistant',
-    instructions: [
-      '1. 直接开始对话，无需额外配置',
-      '2. 支持文件上传和图片分析',
-      '3. 具备推理分析能力',
-      '4. 支持多轮上下文对话'
-    ],
-    requirements: [
-      'FastGPT账号',
-      'Claude4模型访问权限'
-    ]
+
+
   }
 ];
 

@@ -102,11 +102,9 @@ export interface Workflow {
   id: string;
   title: string;
   description: string;
-  longDescription?: string;
   category: WorkflowCategory;
   thumbnail: string;
-  screenshots: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+
   usageCount: number;
   likeCount: number;
   createdAt: string;
@@ -117,8 +115,8 @@ export interface Workflow {
   };
   config: FastGPTWorkflowConfig;
   demoUrl?: string;
-  instructions: string[];
-  requirements: string[];
+
+
   json_source?: string;
   is_featured?: boolean;
 }

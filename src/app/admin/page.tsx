@@ -305,12 +305,33 @@ function AdminContent() {
     if (!confirm('确定要删除这个工作流吗？')) return;
 
     try {
+      // 先获取工作流信息，以便删除对应的图片文件
+      const getResponse = await fetch(`${API_BASE_URL}/admin/workflows/${id}`);
+      const getResult = await getResponse.json();
+      
+      let thumbnailUrl = '';
+      if (getResult.success && getResult.data.thumbnail_url) {
+        thumbnailUrl = getResult.data.thumbnail_url;
+      }
+
+      // 删除工作流
       const response = await fetch(`${API_BASE_URL}/admin/workflows/${id}`, {
         method: 'DELETE',
       });
 
       const result = await response.json();
       if (result.success) {
+        // 如果工作流删除成功，且有缩略图，则删除图片文件
+        if (thumbnailUrl && thumbnailUrl.startsWith('/uploads/')) {
+          try {
+            await fetch(`${API_BASE_URL}/upload/logo?url=${encodeURIComponent(thumbnailUrl)}`, {
+              method: 'DELETE',
+            });
+          } catch (error) {
+            console.warn('删除图片文件失败:', error);
+          }
+        }
+        
         toast.success('工作流删除成功');
         fetchData();
       } else {
@@ -380,6 +401,30 @@ function AdminContent() {
     }
   };
 
+  // 删除图片文件
+  const handleDeleteImage = async (imageUrl: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload/logo?url=${encodeURIComponent(imageUrl)}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // 清空表单中的缩略图URL
+        setFormData(prev => ({ ...prev, thumbnail_url: '' }));
+        toast.success('图片删除成功');
+      } else {
+        // 即使API删除失败，也清空表单字段（可能文件已经不存在）
+        setFormData(prev => ({ ...prev, thumbnail_url: '' }));
+        console.warn('删除图片文件失败:', result.error);
+      }
+    } catch (error) {
+      console.error('删除图片失败:', error);
+      // 即使删除失败，也清空表单字段
+      setFormData(prev => ({ ...prev, thumbnail_url: '' }));
+    }
+  };
+
   // 编辑工作流
   const handleEdit = (workflow: Workflow) => {
     setEditingWorkflow(workflow);
@@ -388,7 +433,7 @@ function AdminContent() {
       description: workflow.description,
       category_id: workflow.category_id,
       author_id: workflow.author_id.toString(),
-      thumbnail_url: workflow.thumbnail_url,
+      thumbnail_url: workflow.thumbnail_url || '',
       demo_url: workflow.demo_url || '',
       is_featured: workflow.is_featured,
       is_published: workflow.is_published,
@@ -515,8 +560,6 @@ function AdminContent() {
   };
 
   // 过滤工作流逻辑已移至useMemo优化版本
-
-  // Difficulty functions removed
 
   if (loading) {
     return (
@@ -810,17 +853,9 @@ function AdminContent() {
                             <span className="text-sm text-gray-500">支持 JPG、PNG、GIF，最大5MB</span>
                           </div>
                           
-                          {/* URL输入框 */}
-                          <Input
-                            id="thumbnail_url"
-                            value={formData.thumbnail_url}
-                            onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                            placeholder="或直接输入图片链接"
-                          />
-                          
                           {/* 图片预览 */}
                           {formData.thumbnail_url && (
-                            <div className="mt-2">
+                            <div className="mt-2 relative inline-block">
                               <Image
                                 src={formData.thumbnail_url}
                                 alt="Logo预览"
@@ -831,6 +866,14 @@ function AdminContent() {
                                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                                 }}
                               />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteImage(formData.thumbnail_url)}
+                                className="absolute -top-2 -right-2 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                                title="删除图片"
+                              >
+                                ×
+                              </button>
                             </div>
                           )}
                         </div>
@@ -903,7 +946,7 @@ function AdminContent() {
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <Image
-                              src={workflow.thumbnail_url}
+                              src={workflow.thumbnail_url || '/placeholder.svg'}
                               alt={workflow.title}
                               width={40}
                               height={40}
@@ -1274,17 +1317,9 @@ function AdminContent() {
                   <span className="text-sm text-gray-500">支持 JPG、PNG、GIF，最大5MB</span>
                 </div>
                 
-                {/* URL输入框 */}
-                <Input
-                  id="edit-thumbnail-url"
-                  value={formData.thumbnail_url}
-                  onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                  placeholder="或直接输入图片链接"
-                />
-                
                 {/* 图片预览 */}
                 {formData.thumbnail_url && (
-                  <div className="mt-2">
+                  <div className="mt-2 relative inline-block">
                     <Image
                       src={formData.thumbnail_url}
                       alt="Logo预览"
@@ -1295,6 +1330,14 @@ function AdminContent() {
                         (e.target as HTMLImageElement).src = '/placeholder.svg';
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteImage(formData.thumbnail_url)}
+                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                      title="删除图片"
+                    >
+                      ×
+                    </button>
                   </div>
                 )}
               </div>

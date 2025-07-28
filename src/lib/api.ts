@@ -21,13 +21,12 @@ export interface ApiWorkflow {
   id: string;
   title: string;
   description: string;
-  long_description?: string;
+
   category_id: string;
   category_name: string;
 
   thumbnail_url?: string;
   screenshots?: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
 
   usage_count: number;
   like_count: number;
@@ -36,8 +35,7 @@ export interface ApiWorkflow {
   author_name: string;
   author_avatar?: string;
   demo_url?: string;
-  instructions?: string[];
-  requirements?: string[];
+
   config?: Record<string, unknown>;
   is_featured?: boolean;
 }
@@ -134,10 +132,34 @@ class ApiClient {
 
   // 记录用户行为
   async recordAction(workflowId: string, actionType: 'view' | 'like' | 'copy' | 'download' | 'try'): Promise<ApiResponse<{ success: boolean }>> {
+    // 对于点赞操作，使用专门的like API
+    if (actionType === 'like') {
+      return this.request<{ success: boolean }>(`/api/workflows/${workflowId}/like`, {
+        method: 'POST',
+        body: JSON.stringify({ user_session_id: this.getUserSessionId() }),
+      });
+    }
+    
+    // 其他操作使用通用的actions API
     return this.request<{ success: boolean }>(`/api/workflows/${workflowId}/actions`, {
       method: 'POST',
-      body: JSON.stringify({ action_type: actionType }),
+      body: JSON.stringify({ 
+        action_type: actionType,
+        user_session_id: this.getUserSessionId()
+      }),
     });
+  }
+
+  // 获取用户会话ID
+  private getUserSessionId(): string {
+    if (typeof window === 'undefined') return '';
+    
+    let sessionId = localStorage.getItem('user_session_id');
+    if (!sessionId) {
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('user_session_id', sessionId);
+    }
+    return sessionId;
   }
 }
 
@@ -159,15 +181,12 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
     id: apiWorkflow.id,
     title: apiWorkflow.title,
     description: apiWorkflow.description,
-    longDescription: apiWorkflow.long_description || apiWorkflow.description,
     category: {
       id: apiWorkflow.category_id,
       name: apiWorkflow.category_name,
     },
 
     thumbnail: apiWorkflow.thumbnail_url || '/workflows/default.jpg',
-    screenshots: apiWorkflow.screenshots || [],
-    difficulty: apiWorkflow.difficulty,
 
     usageCount: apiWorkflow.usage_count,
     likeCount: apiWorkflow.like_count,
@@ -179,8 +198,8 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
     },
     config: transformedConfig,
     ...(apiWorkflow.demo_url && { demoUrl: apiWorkflow.demo_url }),
-    instructions: apiWorkflow.instructions || [],
-    requirements: apiWorkflow.requirements || [],
+
+
     ...(apiWorkflow.is_featured !== undefined && { is_featured: apiWorkflow.is_featured }),
   };
 }
