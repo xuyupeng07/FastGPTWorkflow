@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-// 检查是否需要隐藏开发指示物
-const hideDevIndicators = process.env.HIDE_DEV_INDICATORS === 'true';
-
 const nextConfig: NextConfig = {
   // ESLint configuration
   eslint: {
@@ -14,27 +11,25 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-select'],
   },
   
-  // Completely disable development indicators when hideDevIndicators is true
-  devIndicators: hideDevIndicators ? false : {
-    position: 'bottom-right',
+  // Development indicators
+  devIndicators: {
+    position: 'bottom-left',
   },
   
-  // Disable development overlay (controlled by environment variable)
-  reactStrictMode: !hideDevIndicators,
+  // React strict mode
+  reactStrictMode: true,
   
-  // Disable error overlay in development
+  // Allow external origins for development
+  allowedDevOrigins: [
+    'cloud.fastgpt.io',
+    'qktyoucivudx.sealoshzh.site',
+    'vjugeqdfnhuc.sealoshzh.site'
+  ],
+  
+  // Error overlay in development
   onDemandEntries: {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
-  },
-  
-  // Custom webpack configuration to hide dev indicators
-  webpack: (config, { dev, isServer }) => {
-    if (dev && hideDevIndicators) {
-      // 禁用开发模式的一些功能
-      config.devtool = false;
-    }
-    return config;
   },
 
   // Turbopack configuration
@@ -55,7 +50,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSafeLocalStorage } from '@/components/HydrationSafeWrapper';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -23,13 +24,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 使用安全的localStorage访问
+  const [authToken, setAuthToken, isTokenLoaded] = useSafeLocalStorage('admin_auth_token');
+  const [authExpiry, setAuthExpiry, isExpiryLoaded] = useSafeLocalStorage('admin_auth_expiry');
+
   // 检查本地存储中的认证状态
   useEffect(() => {
+    if (!isTokenLoaded || !isExpiryLoaded) {
+      return;
+    }
+
     const checkAuthStatus = () => {
       try {
-        const authToken = localStorage.getItem('admin_auth_token');
-        const authExpiry = localStorage.getItem('admin_auth_expiry');
-        
         if (authToken && authExpiry) {
           const expiryTime = parseInt(authExpiry, 10);
           const currentTime = Date.now();
@@ -38,8 +44,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setIsAuthenticated(true);
           } else {
             // Token已过期，清除存储
-            localStorage.removeItem('admin_auth_token');
-            localStorage.removeItem('admin_auth_expiry');
+            setAuthToken('');
+            setAuthExpiry('');
             setIsAuthenticated(false);
           }
         } else {
@@ -54,7 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     checkAuthStatus();
-  }, []);
+  }, [authToken, authExpiry, isTokenLoaded, isExpiryLoaded, setAuthToken, setAuthExpiry]);
 
   const login = async (credentials: { username: string; password: string }): Promise<boolean> => {
     try {
@@ -70,8 +76,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const token = btoa(`${credentials.username}:${Date.now()}`);
         const expiryTime = Date.now() + (24 * 60 * 60 * 1000); // 24小时后过期
         
-        localStorage.setItem('admin_auth_token', token);
-        localStorage.setItem('admin_auth_expiry', expiryTime.toString());
+        setAuthToken(token);
+        setAuthExpiry(expiryTime.toString());
         
         setIsAuthenticated(true);
         return true;
@@ -86,8 +92,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = () => {
     try {
-      localStorage.removeItem('admin_auth_token');
-      localStorage.removeItem('admin_auth_expiry');
+      setAuthToken('');
+      setAuthExpiry('');
       setIsAuthenticated(false);
     } catch (error) {
       console.error('登出失败:', error);

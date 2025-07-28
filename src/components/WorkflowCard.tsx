@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Workflow } from '@/lib/types';
 import { WorkflowExperience } from '@/components/WorkflowExperience';
+import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Users, Heart, CheckCircle, Loader2 } from 'lucide-react';
 import { getUserSessionId } from '@/lib/userSession';
@@ -38,7 +39,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     setIsClient(true);
   }, []);
 
-  const handleCopyJson = async (e?: React.MouseEvent) => {
+  const handleCopyJson = useSafeEventHandler(useCallback(async (e?: React.MouseEvent) => {
     // 阻止事件冒泡和默认行为，防止页面刷新
     if (e) {
       e.preventDefault();
@@ -140,9 +141,9 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     } finally {
       setCopying(false);
     }
-  };
+  }, [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId]), [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId]);
 
-  const handleTryWorkflow = (e: React.MouseEvent) => {
+  const handleTryWorkflow = useSafeEventHandler(useCallback((e: React.MouseEvent) => {
     // 阻止事件冒泡和默认行为，防止页面刷新
     e.preventDefault();
     e.stopPropagation();
@@ -166,7 +167,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     } else {
       console.warn('该工作流没有设置演示URL');
     }
-  };
+  }, [isClient, workflow.demoUrl, userSessionId, workflow.id]), [isClient, workflow.demoUrl, userSessionId, workflow.id]);
 
 
 
@@ -318,7 +319,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   // 防抖处理点赞
   const handleLikeRef = useRef<NodeJS.Timeout | null>(null);
   
-  const handleLike = useCallback(async () => {
+  const handleLike = useSafeEventHandler(useCallback(async () => {
     if (liking || !isClient || !userSessionId || liked) return;
     
     // 防抖处理，防止重复点击
@@ -377,10 +378,10 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
         setLiking(false);
       }
     }, 50);
-  }, [liking, isClient, userSessionId, liked, likeCount, workflow.id, setCachedLikeStatus]);
+  }, [liking, isClient, userSessionId, liked, likeCount, workflow.id, setCachedLikeStatus]), [liking, isClient, userSessionId, liked, likeCount, workflow.id, setCachedLikeStatus]);
 
   return (
-    <>
+    <ClientOnlyWrapper>
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -551,6 +552,6 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       isOpen={showExperience}
       onClose={() => setShowExperience(false)}
     />
-    </>
+    </ClientOnlyWrapper>
   );
 }

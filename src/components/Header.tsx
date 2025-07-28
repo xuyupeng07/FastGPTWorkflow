@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Search, Star } from 'lucide-react';
 
@@ -18,11 +19,11 @@ export function Header({ onSearch }: HeaderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useSafeEventHandler((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
     onSearch?.(value);
-  };
+  }, [onSearch]);
 
   const fetchGitHubStars = async () => {
     try {
@@ -94,7 +95,7 @@ export function Header({ onSearch }: HeaderProps) {
   // 防止水合不匹配 - 在客户端挂载前显示静态版本
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60" suppressHydrationWarning>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center flex-shrink-0">
@@ -116,8 +117,8 @@ export function Header({ onSearch }: HeaderProps) {
               <Input
                 type="text"
                 placeholder="搜索 AI 工作流模板..."
-                value={searchQuery}
-                onChange={handleSearchChange}
+                value=""
+                readOnly
                 className="w-full pl-10 text-sm"
               />
             </div>
@@ -156,8 +157,8 @@ export function Header({ onSearch }: HeaderProps) {
               <Input
                 type="text"
                 placeholder="搜索 AI 工作流模板..."
-                value={searchQuery}
-                onChange={handleSearchChange}
+                value=""
+                readOnly
                 className="w-full pl-10 text-sm"
               />
             </div>
