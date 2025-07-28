@@ -5,7 +5,7 @@ import { createSuccessResponse, createErrorResponse } from '@/lib/api-utils';
 // GET /api/workflows/[id]/like-status - 检查用户点赞状态
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

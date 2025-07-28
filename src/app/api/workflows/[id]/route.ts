@@ -9,8 +9,8 @@ import {
 
 // GET /api/workflows/[id] - 获取工作流详情
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -64,8 +64,8 @@ export async function GET(
 
 // PUT /api/workflows/[id] - 更新工作流
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -116,8 +116,8 @@ export async function PUT(
 
 // DELETE /api/workflows/[id] - 删除工作流
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

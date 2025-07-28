@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { pool } from '@/lib/db';
 import { 
   createSuccessResponse, 
@@ -7,8 +6,8 @@ import {
 
 // GET /api/admin/categories/[id] - 获取分类详情（管理后台）
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -36,8 +35,8 @@ export async function GET(
 
 // PUT /api/admin/categories/[id] - 更新分类
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -81,8 +80,8 @@ export async function PUT(
 
 // DELETE /api/admin/categories/[id] - 删除分类
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

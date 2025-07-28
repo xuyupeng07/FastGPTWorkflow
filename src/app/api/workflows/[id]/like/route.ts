@@ -4,8 +4,8 @@ import { createSuccessResponse, createErrorResponse, withTransaction } from '@/l
 
 // POST /api/workflows/[id]/like - 点赞工作流
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -71,8 +71,8 @@ export async function POST(
 
 // DELETE /api/workflows/[id]/like - 取消点赞
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
