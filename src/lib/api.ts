@@ -25,7 +25,7 @@ export interface ApiWorkflow {
   category_id: string;
   category_name: string;
 
-  thumbnail_url?: string;
+  thumbnail_image_id?: string;
   screenshots?: string[];
 
   usage_count: number;
@@ -186,7 +186,8 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
       name: apiWorkflow.category_name,
     },
 
-    thumbnail: apiWorkflow.thumbnail_url || null,
+    thumbnail: apiWorkflow.thumbnail_image_id ? `/api/images/${apiWorkflow.thumbnail_image_id}?variant=thumbnail` : null,
+    thumbnail_image_id: apiWorkflow.thumbnail_image_id,
 
     usageCount: apiWorkflow.usage_count,
     likeCount: apiWorkflow.like_count,

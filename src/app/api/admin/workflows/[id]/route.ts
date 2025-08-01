@@ -5,6 +5,7 @@ import {
   createErrorResponse, 
   withTransaction
 } from '@/lib/api-utils';
+import imageStorage from '@/lib/imageStorage';
 
 // GET /api/admin/workflows/[id] - 获取工作流详情（管理后台）
 export async function GET(
@@ -33,8 +34,6 @@ export async function GET(
     }
     
     const workflow = workflowResult.rows[0];
-    
-    // 不再需要获取截图、说明等额外信息
     
     // 组装完整的工作流数据
     const fullWorkflow = {
@@ -66,7 +65,7 @@ export async function PUT(
       description,
       author_id,
       category_id,
-      thumbnail_url,
+      thumbnail_image_id,
       demo_url,
       is_featured,
       is_published,
@@ -74,6 +73,42 @@ export async function PUT(
     } = body;
 
     const result = await withTransaction(async (client) => {
+      // 获取当前工作流信息，用于比较图片变更
+      const currentWorkflow = await client.query('SELECT thumbnail_image_id FROM workflows WHERE id = $1', [id]);
+      if (currentWorkflow.rows.length === 0) {
+        throw new Error('工作流不存在');
+      }
+      
+      const oldThumbnailId = currentWorkflow.rows[0].thumbnail_image_id;
+      
+      // 如果图片ID发生变化，更新图片关联
+      if (thumbnail_image_id !== undefined && thumbnail_image_id !== oldThumbnailId) {
+        // 确保 imageStorage 可用
+        if (!imageStorage || typeof imageStorage.unlinkImageFromEntity !== 'function') {
+          console.error('imageStorage 未正确初始化');
+        } else {
+          // 先解除旧图片关联
+          if (oldThumbnailId) {
+            try {
+              await imageStorage.unlinkImageFromEntity('workflow', id, 'logo');
+            } catch (error) {
+              console.error('解除旧图片关联失败:', error);
+              // 不中断更新流程
+            }
+          }
+
+          // 建立新图片关联
+          if (thumbnail_image_id) {
+            try {
+              await imageStorage.linkImageToEntity(thumbnail_image_id, 'workflow', id, { usageType: 'logo', isPrimary: true });
+            } catch (error) {
+              console.error('建立新图片关联失败:', error);
+              // 不中断更新流程
+            }
+          }
+        }
+      }
+
       // 更新工作流基本信息
       const workflowResult = await client.query(`
         UPDATE workflows SET
@@ -81,7 +116,7 @@ export async function PUT(
           description = COALESCE($3, description),
           author_id = COALESCE($4, author_id),
           category_id = COALESCE($5, category_id),
-          thumbnail_url = COALESCE($6, thumbnail_url),
+          thumbnail_image_id = COALESCE($6, thumbnail_image_id),
           demo_url = COALESCE($7, demo_url),
           is_featured = COALESCE($8, is_featured),
           is_published = COALESCE($9, is_published),
@@ -90,7 +125,7 @@ export async function PUT(
         WHERE id = $1
         RETURNING *
       `, [
-        id, title, description, author_id, category_id, thumbnail_url, demo_url,
+        id, title, description, author_id, category_id, thumbnail_image_id, demo_url,
         is_featured, is_published, json_source
       ]);
       

@@ -23,9 +23,7 @@ class DatabasePool {
         console.log('✅ 数据库连接池创建成功');
         client.release();
         
-        // 确保数据库表结构完整性
-        const { ensureSchemaIntegrity } = await import('./ensure-schema');
-        await ensureSchemaIntegrity();
+        // 数据库表结构已清理，不需要额外的结构检查
       }).catch(err => {
         console.error('❌ 数据库连接失败:', err);
       });

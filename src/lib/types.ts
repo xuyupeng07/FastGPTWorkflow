@@ -104,7 +104,7 @@ export interface Workflow {
   description: string;
   category: WorkflowCategory;
   thumbnail: string | null;
-
+  thumbnail_image_id?: string;
   usageCount: number;
   likeCount: number;
   createdAt: string;
@@ -115,8 +115,6 @@ export interface Workflow {
   };
   config: FastGPTWorkflowConfig;
   demoUrl?: string;
-
-
   json_source?: string;
   is_featured?: boolean;
 }

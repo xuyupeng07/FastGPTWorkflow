@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     
-    // 查询工作流列表，使用workflows表中的thumbnail_url字段
+    // 查询工作流列表，使用workflows表中的thumbnail_image_id字段
     let query = `
       SELECT 
         w.*,
@@ -56,15 +56,47 @@ export async function GET(request: NextRequest) {
     
     const result = await pool.query(query, params);
     
-    // 为每个工作流格式化数据
-    const workflowsWithExtras = result.rows.map(workflow => ({
-      ...workflow,
-      thumbnail: workflow.thumbnail_url || '/placeholder.svg', // 映射thumbnail_url为thumbnail
-
-      author: {
-        name: workflow.author_name,
-        avatar: workflow.author_avatar
+    // 为每个工作流格式化数据，根据thumbnail_image_id生成正确的图片URL
+    // 对于SVG图片，直接使用原始图片以保持清晰度
+    const workflowsWithExtras = await Promise.all(result.rows.map(async workflow => {
+      let thumbnailUrl = '/fastgpt.svg';
+      
+      if (workflow.thumbnail_image_id) {
+        // 检查图片类型，如果是SVG则不使用thumbnail variant
+        try {
+          const imageResult = await pool.query(
+            'SELECT mime_type FROM images WHERE id = $1',
+            [workflow.thumbnail_image_id]
+          );
+          
+          if (imageResult.rows.length > 0) {
+            const mimeType = imageResult.rows[0].mime_type;
+            if (mimeType === 'image/svg+xml') {
+              // SVG图片直接使用原始图片
+              thumbnailUrl = `/api/images/${workflow.thumbnail_image_id}`;
+            } else {
+              // 其他格式使用thumbnail variant
+              thumbnailUrl = `/api/images/${workflow.thumbnail_image_id}?variant=thumbnail`;
+            }
+          } else {
+            // 图片不存在，使用默认图片
+            thumbnailUrl = '/fastgpt.svg';
+          }
+        } catch (error) {
+          console.warn('检查图片类型失败:', error);
+          // 出错时使用原始图片
+          thumbnailUrl = `/api/images/${workflow.thumbnail_image_id}`;
+        }
       }
+      
+      return {
+        ...workflow,
+        thumbnail: thumbnailUrl,
+        author: {
+          name: workflow.author_name,
+          avatar: workflow.author_avatar
+        }
+      };
     }));
     
     // 简化的总数查询
@@ -118,7 +150,7 @@ export async function POST(request: NextRequest) {
       category_id,
       author_id,
       json_source,
-      thumbnail_url,
+      thumbnail_image_id,
       is_featured = false,
       is_published = true
     } = body;
@@ -134,12 +166,12 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(`
       INSERT INTO workflows (
         id, title, description, category_id, author_id,
-        json_source, thumbnail_url, is_featured, is_published
+        json_source, thumbnail_image_id, is_featured, is_published
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       id, title, description, category_id, author_id,
-      json_source, thumbnail_url, is_featured, is_published
+      json_source, thumbnail_image_id, is_featured, is_published
     ]);
 
     return createSuccessResponse(result.rows[0], '工作流创建成功');

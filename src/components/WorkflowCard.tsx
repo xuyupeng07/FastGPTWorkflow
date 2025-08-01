@@ -10,9 +10,9 @@ import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSa
 import { motion } from 'framer-motion';
 import { Users, Heart, CheckCircle, Loader2 } from 'lucide-react';
 import { getUserSessionId } from '@/lib/userSession';
+import Image from 'next/image';
 
 import { getApiUrl } from '@/lib/config';
-import Image from 'next/image';
 
 interface WorkflowCardProps {
   workflow: Workflow;
@@ -57,13 +57,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
         
-        // 乐观更新：立即增加使用数量
-        setUsageCount(prev => prev + 1);
-        
         // 记录copy行为
         if (userSessionId) {
           try {
             await recordUserAction('copy');
+            // API调用成功后，乐观更新使用数量
+            setUsageCount(prev => prev + 1);
           } catch (error) {
             console.error('记录copy行为失败:', error);
           }
@@ -88,13 +87,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);
         
-        // 乐观更新：立即增加使用数量
-        setUsageCount(prev => prev + 1);
-        
         // 记录copy行为
         if (userSessionId) {
           try {
             await recordUserAction('copy');
+            // API调用成功后，乐观更新使用数量
+            setUsageCount(prev => prev + 1);
           } catch (error) {
             console.error('记录copy行为失败:', error);
           }
@@ -170,15 +168,16 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     if (workflow.demoUrl) {
       window.open(workflow.demoUrl, '_blank');
       
-      // 乐观更新：立即增加使用数量
-      setUsageCount(prev => prev + 1);
-      
       // 记录try行为
       if (userSessionId) {
         // 异步记录行为，不阻塞UI
         recordUserAction('try')
+          .then(() => {
+            // API调用成功后，更新使用数量
+            setUsageCount(prev => prev + 1);
+          })
           .catch((_error) => {
-          console.error('记录try行为失败:', _error);
+            console.error('记录try行为失败:', _error);
           });
       }
     } else {
@@ -403,48 +402,39 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08 }}
       whileHover={{ y: -2, scale: 1.005 }}
-      className="w-full h-48 sm:h-52 lg:h-56 group relative"
+      className="workflow-card w-full h-48 sm:h-52 lg:h-56 group relative"
     >
       {workflow.is_featured && (
-         <div className="absolute top-5 right-0 bg-black text-white p-1 rounded-tl-md rounded-bl-md z-10">
+         <div className="absolute top-5 right-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-1 rounded-tl-md rounded-bl-md z-10 shadow-md">
                   <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                   </svg>
                 </div>
        )}
-      <Card className="h-full flex flex-col hover:shadow-md transition-all duration-300 border border-gray-100/50 bg-white rounded-xl overflow-hidden p-1 sm:p-1.5">
+      <Card className="workflow-card h-full flex flex-col hover:shadow-md transition-all duration-300 border border-gray-100/50 bg-white rounded-xl overflow-hidden p-1 sm:p-1.5">
         {/* 主要内容区域 */}
         <div className="flex-1 px-3 sm:px-4 lg:px-5 pt-2 sm:pt-3 pb-1 sm:pb-1.5 overflow-hidden">
           {/* 顶部区域：logo和基本信息 */}
            <div className="flex gap-2 sm:gap-2.5 -mb-1">
              {/* 左侧logo */}
-             <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg sm:rounded-xl bg-white flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm border border-gray-100">
-               {workflow.thumbnail ? (
-                 <Image 
-                   src={workflow.thumbnail} 
-                   alt={workflow.title}
-                   width={56}
-                   height={56}
-                   className="w-full h-full object-cover rounded-xl"
-                   onError={(e) => {
-                     // 如果图片加载失败，显示fastgpt.svg
-                     const target = e.target as HTMLImageElement;
-                     target.style.display = 'none';
-                     const parent = target.parentElement;
-                     if (parent) {
-                       parent.innerHTML = `<img src="/fastgpt.svg" alt="FastGPT" class="w-full h-full object-contain rounded-xl" />`;
-                     }
-                   }}
-                 />
-               ) : (
-                 <Image 
-                   src="/fastgpt.svg" 
-                   alt="FastGPT"
-                   width={56}
-                   height={56}
-                   className="w-full h-full object-contain rounded-xl"
-                 />
-               )}
+             <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-lg border-2 border-transparent shadow-lg" style={{
+               boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+               background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
+             }}>
+               <Image
+                src={workflow.thumbnail_image_id ? `/api/images/${workflow.thumbnail_image_id}` : '/fastgpt.svg'}
+                alt={workflow.title}
+                width={56}
+                height={56}
+                className="max-w-full max-h-full object-contain"
+                style={{
+                  imageRendering: 'auto'
+                } as React.CSSProperties}
+                unoptimized={workflow.thumbnail_image_id ? true : false}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/fastgpt.svg';
+                }}
+              />
              </div>
              
              {/* 右侧信息 */}
@@ -460,14 +450,18 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                
                {/* 作者信息 */}
                 <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 mt-0.5 sm:mt-1">
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white flex items-center justify-center border border-gray-200">
-                    <Image 
-                      src={workflow.author?.avatar || "/fastgpt.svg"} 
-                      alt={workflow.author?.name || "FastGPT"} 
-                      width={18}
-                      height={18}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" 
-                    />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center border border-gray-100 shadow-sm overflow-hidden">
+                     <Image
+                        src="/fastgpt.svg"
+                        alt="FastGPT"
+                        width={20}
+                        height={20}
+                        className="max-w-full max-h-full object-contain"
+                        style={{
+                          imageRendering: 'auto'
+                        } as React.CSSProperties}
+                        unoptimized
+                     />
                   </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700">
                     {/* 显示实际作者名称 */}

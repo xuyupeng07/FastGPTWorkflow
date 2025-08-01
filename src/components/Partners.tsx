@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ExternalLink, Users, Award, Zap } from 'lucide-react';
@@ -31,8 +31,30 @@ export function Partners({
   const partnersToShow = variant === 'featured' ? featuredPartners : displayPartners;
 
   if (variant === 'compact') {
-    // 创建三倍的合作伙伴数组以实现真正的无缝滚动
-    const scrollPartners = [...partnersToShow, ...partnersToShow, ...partnersToShow];
+    // 创建双倍的合作伙伴数组以实现无缝滚动
+    const scrollPartners = [...partnersToShow, ...partnersToShow];
+    
+    // 使用ref来控制滚动容器
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [translateX, setTranslateX] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+    
+    useEffect(() => {
+      if (isPaused) return;
+      
+      const interval = setInterval(() => {
+        setTranslateX(prev => {
+          // 当移动到一半位置时（即第一组完全移出视野），重置到起始位置
+          const resetPoint = -50; // 50% 对应第一组完全移出
+          if (prev <= resetPoint) {
+            return 0;
+          }
+          return prev - 0.1; // 每次移动0.1%
+        });
+      }, 50); // 每50ms移动一次，创建平滑动画
+      
+      return () => clearInterval(interval);
+    }, [isPaused]);
     
     return (
       <section className="py-8 bg-gradient-to-r from-gray-50 to-blue-50/30 overflow-hidden">
@@ -50,51 +72,57 @@ export function Partners({
           <div className="absolute right-0 top-0 w-4 sm:w-6 lg:w-8 xl:w-12 h-full bg-gradient-to-l from-gray-50 via-gray-50 to-transparent z-10 pointer-events-none"></div>
           
           {/* 滚动容器 */}
-          <div className="flex animate-scroll-horizontal px-4">
+          <div 
+            ref={scrollContainerRef}
+            className="flex px-4 transition-transform duration-0"
+            style={{ transform: `translateX(${translateX}%)` }}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
             {scrollPartners.map((partner, index) => (
               <motion.a
-                key={`${partner.id}-${index}`}
+                key={`${partner.id}-${Math.floor(index / partnersToShow.length)}-${index % partnersToShow.length}`}
                 href={partner.website}
                 target="_blank"
                 rel="noopener noreferrer"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: (index % partnersToShow.length) * 0.1 }}
-                className="group flex-shrink-0 flex items-center justify-center p-3 mx-4 rounded-lg hover:bg-white hover:shadow-md transition-all duration-300"
+                whileHover={{ 
+                  scale: 1.1,
+                  y: -8,
+                  transition: { 
+                    type: "spring", 
+                    stiffness: 400, 
+                    damping: 10 
+                  }
+                }}
+                whileTap={{ scale: 0.95 }}
+                className="group flex-shrink-0 flex items-center justify-center p-3 mx-4 rounded-lg transition-all duration-300"
               >
-                <div className="w-24 h-12 relative transition-all duration-300">
+                <motion.div 
+                  className="w-24 h-12 relative"
+                  whileHover={{
+                    rotate: [0, -5, 5, -5, 0],
+                    transition: {
+                      duration: 0.5,
+                      ease: "easeInOut"
+                    }
+                  }}
+                >
                   <Image
                     src={partner.logo}
                     alt={partner.name}
                     fill
-                    className="object-contain"
+                    className="object-contain filter transition-all duration-300 group-hover:brightness-110 group-hover:contrast-110"
                     sizes="96px"
+                    unoptimized
                   />
-                </div>
+                </motion.div>
               </motion.a>
             ))}
           </div>
         </div>
-        
-        {/* CSS 动画样式 */}
-        <style jsx>{`
-          @keyframes scroll-horizontal {
-            0% {
-              transform: translateX(0);
-            }
-            100% {
-              transform: translateX(-33.33%);
-            }
-          }
-          
-          .animate-scroll-horizontal {
-            animation: scroll-horizontal 30s linear infinite;
-          }
-          
-          .animate-scroll-horizontal:hover {
-            animation-play-state: paused;
-          }
-        `}</style>
       </section>
     );
   }
@@ -145,6 +173,7 @@ export function Partners({
                           fill
                           className="object-contain"
                           sizes="48px"
+                          unoptimized
                         />
                       </div>
                       <div className="flex-1">
@@ -195,6 +224,7 @@ export function Partners({
                       fill
                       className="object-contain"
                       sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
+                      unoptimized
                     />
                   </div>
                   <h4 className="text-sm font-medium text-gray-900 text-center group-hover:text-blue-600 transition-colors">
@@ -227,6 +257,7 @@ export function Partners({
                     fill
                     className="object-contain"
                     sizes="80px"
+                    unoptimized
                   />
                 </div>
                 <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">

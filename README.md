@@ -17,23 +17,29 @@
 - 🎯 **智能分类** - 按用途、难度等维度筛选
 - 📱 **响应式设计** - 完美适配各种设备
 - 🔍 **实时搜索** - 快速找到需要的工作流
+- 🖼️ **图像管理** - 支持工作流缩略图上传和处理
+- 📊 **数据统计** - 实时统计工作流使用情况
+- 🔒 **权限管理** - 管理员后台权限控制
 
 ## 🛠️ 技术栈
 
-- **前端**: Next.js 15 + React 19 + TypeScript
-- **样式**: Tailwind CSS 4.0 + shadcn/ui
-- **数据库**: PostgreSQL
+- **前端**: Next.js 15.4.3 + React 19.1.0 + TypeScript 5.7.2
+- **样式**: Tailwind CSS 4.0 + shadcn/ui + Radix UI
+- **数据库**: PostgreSQL + Sharp (图像处理)
 - **状态管理**: Zustand + SWR
+- **动画**: Framer Motion
 - **图标**: Lucide React
+- **代码高亮**: Prism.js
 - **部署**: Vercel
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Node.js 16.0+
+- Node.js 18.0+
 - PostgreSQL 12+
 - pnpm (推荐) 或 npm
+- Sharp (自动安装，用于图像处理)
 
 ### 安装和运行
 
@@ -89,20 +95,29 @@ pnpm run dev      # 启动开发服务器 (http://localhost:3000)
 ```
 FastGPTWorkflow/
 ├── src/
-│   ├── app/                 # Next.js 13+ App Router
+│   ├── app/                 # Next.js 15+ App Router
 │   │   ├── api/            # API Routes
 │   │   ├── admin/          # 管理后台页面
-│   │   └── workflow/       # 工作流详情页面
+│   │   ├── workflow/       # 工作流详情页面
+│   │   ├── globals.css     # 全局样式
+│   │   ├── layout.tsx      # 根布局
+│   │   └── page.tsx        # 首页
 │   ├── components/          # React 组件
 │   │   ├── ui/             # shadcn/ui 基础组件
 │   │   └── *.tsx           # 业务组件
 │   ├── contexts/           # React Context
+│   ├── data/               # 静态数据
 │   ├── hooks/              # 自定义 Hooks
 │   ├── lib/                # 工具库和类型定义
 │   └── styles/             # 样式文件
 ├── public/                 # 静态资源
+│   ├── partners/           # 合作伙伴图标
 │   └── uploads/            # 上传的文件
-└── package.json
+├── data/                   # 数据文件
+├── components.json         # shadcn/ui 配置
+├── tailwind.config.ts      # Tailwind 配置
+├── next.config.ts          # Next.js 配置
+└── package.json            # 项目依赖
 ```
 
 ## 🔧 开发脚本
@@ -110,13 +125,18 @@ FastGPTWorkflow/
 ```bash
 # 开发
 pnpm run dev          # 启动开发服务器 (http://localhost:3000)
+                      # 使用 Turbopack 加速构建
 
 # 构建
 pnpm run build        # 构建生产版本
-pnpm run start        # 启动生产服务器
+pnpm run start        # 启动生产服务器 (端口 3000)
 
 # 代码质量
 pnpm run lint         # ESLint 代码检查
+
+# 依赖管理
+pnpm install          # 安装依赖
+pnpm update           # 更新依赖
 ```
 
 ## 🌐 访问地址
@@ -182,7 +202,11 @@ pnpm run lint         # ESLint 代码检查
 2. 在 [Vercel](https://vercel.com) 中导入项目
 3. 配置环境变量:
    - `DATABASE_URL`: PostgreSQL 数据库连接字符串
+   - 格式: `postgresql://username:password@host:port/database?directConnection=true`
+   - 示例: `postgresql://postgres:password@localhost:5432/fastgpt_workflow`
 4. 点击部署即可
+
+> 💡 建议使用 Supabase、PlanetScale 或 Neon 等云数据库服务
 
 ### 自托管部署
 

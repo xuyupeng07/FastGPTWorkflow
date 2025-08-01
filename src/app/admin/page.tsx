@@ -27,7 +27,7 @@ interface Workflow {
   category_name: string;
   author_id: number;
   author_name: string;
-  thumbnail_url: string;
+  thumbnail_image_id: string;
   usage_count: number;
   like_count: number;
   demo_url?: string;
@@ -124,12 +124,20 @@ function AdminContent() {
     description: '',
     category_id: '',
     author_id: '',
-    thumbnail_url: '',
+    thumbnail_image_id: '',
     demo_url: '',
     is_featured: false,
     is_published: true,
     json_source: ''
   });
+  
+  // 添加本地图片预览状态
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // 调试预览图片状态
+  useEffect(() => {
+    console.log('Preview image state changed:', !!previewImage, previewImage?.substring(0, 50) + '...');
+  }, [previewImage]);
 
   // 优化的过滤逻辑
   const filteredWorkflows = useMemo(() => {
@@ -220,8 +228,14 @@ function AdminContent() {
       toast.error('请选择作者');
       return;
     }
-    if (!formData.thumbnail_url.trim()) {
-      toast.error('请输入缩略图URL');
+    // 检查是否正在上传图片
+    if (uploading) {
+      toast.error('图片正在上传中，请等待上传完成');
+      return;
+    }
+    // 验证必须上传工作流Logo
+    if (!formData.thumbnail_image_id) {
+      toast.error('请上传工作流Logo');
       return;
     }
 
@@ -235,6 +249,7 @@ function AdminContent() {
       });
 
       const result = await response.json();
+      
       if (result.success) {
         toast.success('工作流创建成功');
         setIsCreateDialogOpen(false);
@@ -245,7 +260,7 @@ function AdminContent() {
       }
     } catch (_error) {
       console.error('创建失败:', _error);
-      toast.error('创建失败');
+      toast.error('创建失败: ' + (_error instanceof Error ? _error.message : '未知错误'));
     }
   };
 
@@ -270,8 +285,8 @@ function AdminContent() {
       toast.error('请选择作者');
       return;
     }
-    if (!formData.thumbnail_url.trim()) {
-      toast.error('请输入缩略图URL');
+    if (!formData.thumbnail_image_id) {
+      toast.error('请上传工作流Logo');
       return;
     }
 
@@ -305,13 +320,13 @@ function AdminContent() {
     if (!confirm('确定要删除这个工作流吗？')) return;
 
     try {
-      // 先获取工作流信息，以便删除对应的图片文件
+      // 先获取工作流信息，以便解除图片关联
       const getResponse = await fetch(`${API_BASE_URL}/admin/workflows/${id}`);
       const getResult = await getResponse.json();
       
-      let thumbnailUrl = '';
-      if (getResult.success && getResult.data.thumbnail_url) {
-        thumbnailUrl = getResult.data.thumbnail_url;
+      let thumbnailImageId = '';
+      if (getResult.success && getResult.data.thumbnail_image_id) {
+        thumbnailImageId = getResult.data.thumbnail_image_id;
       }
 
       // 删除工作流
@@ -321,14 +336,22 @@ function AdminContent() {
 
       const result = await response.json();
       if (result.success) {
-        // 如果工作流删除成功，且有缩略图，则删除图片文件
-        if (thumbnailUrl && thumbnailUrl.startsWith('/uploads/')) {
+        // 如果工作流删除成功，且有缩略图，则解除图片关联
+        if (thumbnailImageId) {
           try {
-            await fetch(`${API_BASE_URL}/upload/logo?url=${encodeURIComponent(thumbnailUrl)}`, {
-              method: 'DELETE',
+            await fetch(`/api/images/unlink`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                entityType: 'workflow',
+                entityId: id,
+                usageType: 'logo'
+              }),
             });
           } catch (error) {
-            console.warn('删除图片文件失败:', error);
+            console.warn('解除图片关联失败:', error);
           }
         }
         
@@ -350,22 +373,24 @@ function AdminContent() {
       description: '',
       category_id: '',
       author_id: '',
-      thumbnail_url: '',
+      thumbnail_image_id: '',
       demo_url: '',
       is_featured: false,
       is_published: true,
       json_source: ''
     });
+    setPreviewImage(null); // 清除预览图片
   };
 
-  // 处理文件上传
+  // 处理文件上传 - 使用数据库存储
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 检查文件类型
-    if (!file.type.startsWith('image/')) {
-      toast.error('请选择图片文件');
+    // 更精确的文件类型检查
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('请选择支持的图片格式：JPG、PNG、GIF、WebP、SVG');
       return;
     }
 
@@ -375,53 +400,118 @@ function AdminContent() {
       return;
     }
 
+    // 创建本地预览
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      console.log('FileReader loaded, result length:', result?.length);
+      setPreviewImage(result);
+    };
+    reader.onerror = (e) => {
+      console.error('FileReader error:', e);
+      toast.error('图片预览失败');
+    };
+    reader.readAsDataURL(file);
+    console.log('Starting FileReader for file:', file.name, file.type, file.size);
+
     setUploading(true);
+    
     try {
       const formData = new FormData();
-      formData.append('logo', file);
+      formData.append('image', file); // API期望的字段名是'image'
+      formData.append('entityType', 'workflow');
+      formData.append('entityId', editingWorkflow?.id || 'temp-create-workflow');
+      formData.append('usageType', 'thumbnail');
+      formData.append('isPrimary', 'true');
 
-      const response = await fetch(`${API_BASE_URL}/upload/logo`, {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        toast.error('上传超时，请检查网络连接或尝试压缩图片后重新上传');
+      }, 60000); // 增加到60秒超时
+
+      // 添加上传进度提示
+      toast.info('正在上传图片，请稍候...');
+
+      const response = await fetch(`/api/images/upload`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errorMessage = '上传失败';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || `服务器错误: ${response.status}`;
+        } catch {
+          errorMessage = `网络错误: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
 
       const result = await response.json();
       if (result.success) {
-        // 更新表单数据中的缩略图URL
-        setFormData(prev => ({ ...prev, thumbnail_url: result.data.url }));
-        toast.success('Logo上传成功');
+        setFormData(prev => ({ ...prev, thumbnail_image_id: result.imageId }));
+        setPreviewImage(null); // 清除本地预览
+        toast.success(`Logo上传成功！文件大小: ${Math.round(result.fileSize / 1024)}KB`);
       } else {
-        toast.error(result.error || '上传失败');
+        throw new Error(result.error || '上传处理失败');
       }
-    } catch (_error) {
-      console.error('上传失败:', _error);
-      toast.error('上传失败');
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          toast.error('上传超时，请检查网络连接');
+        } else {
+          toast.error(error.message || '上传失败，请重试');
+        }
+      } else {
+        toast.error('上传失败，请重试');
+      }
+      console.error('上传失败:', error);
     } finally {
       setUploading(false);
+      // 清空input，允许重复选择同一文件
+      event.target.value = '';
     }
   };
 
-  // 删除图片文件
-  const handleDeleteImage = async (imageUrl: string) => {
+  // 删除数据库中的图片记录
+  const handleDeleteImage = async (imageId: string) => {
+    if (!imageId) return;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/upload/logo?url=${encodeURIComponent(imageUrl)}`, {
+      const entityId = editingWorkflow?.id || `temp-${Date.now()}`;
+      
+      const response = await fetch(`/api/images/unlink`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: 'workflow',
+          entityId: entityId,
+          usageType: 'thumbnail'
+        })
       });
 
-      const result = await response.json();
-      if (result.success) {
-        // 清空表单中的缩略图URL
-        setFormData(prev => ({ ...prev, thumbnail_url: '' }));
-        toast.success('图片删除成功');
-      } else {
-        // 即使API删除失败，也清空表单字段（可能文件已经不存在）
-        setFormData(prev => ({ ...prev, thumbnail_url: '' }));
-        console.warn('删除图片文件失败:', result.error);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '删除失败' }));
+        throw new Error(errorData.error || '删除失败');
       }
+
+      // 清空表单中的缩略图ID
+      setFormData(prev => ({ ...prev, thumbnail_image_id: '' }));
+      toast.success('图片删除成功');
     } catch (error) {
       console.error('删除图片失败:', error);
+      if (error instanceof Error) {
+        toast.error(error.message || '删除失败');
+      } else {
+        toast.error('删除失败，请重试');
+      }
       // 即使删除失败，也清空表单字段
-      setFormData(prev => ({ ...prev, thumbnail_url: '' }));
+      setFormData(prev => ({ ...prev, thumbnail_image_id: '' }));
     }
   };
 
@@ -433,7 +523,7 @@ function AdminContent() {
       description: workflow.description,
       category_id: workflow.category_id,
       author_id: workflow.author_id.toString(),
-      thumbnail_url: workflow.thumbnail_url || '',
+      thumbnail_image_id: workflow.thumbnail_image_id || '',
       demo_url: workflow.demo_url || '',
       is_featured: workflow.is_featured,
       is_published: workflow.is_published,
@@ -830,7 +920,7 @@ function AdminContent() {
                       </div>
 
                       <div>
-                        <Label htmlFor="thumbnail_url">工作流Logo</Label>
+                        <Label htmlFor="thumbnail_image_id">工作流Logo</Label>
                         <div className="space-y-3">
                           {/* 文件上传 */}
                           <div className="flex items-center space-x-3">
@@ -854,21 +944,46 @@ function AdminContent() {
                           </div>
                           
                           {/* 图片预览 */}
-                          {formData.thumbnail_url && (
+                          {(previewImage || formData.thumbnail_image_id) && (
                             <div className="mt-2 relative inline-block">
-                              <Image
-                                src={formData.thumbnail_url}
-                                alt="Logo预览"
-                                width={80}
-                                height={80}
-                                className="w-20 h-20 object-cover rounded border"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                }}
-                              />
+                              {previewImage ? (
+                                <img
+                                  src={previewImage}
+                                  alt="Logo预览"
+                                  className="w-20 h-20 object-cover rounded border"
+                                  onLoad={() => console.log('Preview image loaded successfully')}
+                                  onError={(e) => {
+                                    console.error('Preview image load error:', e);
+                                    toast.error('预览图片加载失败');
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-20 h-20 flex items-center justify-center overflow-hidden rounded border">
+                                  <Image
+                                    src={`/api/images/${formData.thumbnail_image_id}`}
+                                    alt="Logo预览"
+                                    width={80}
+                                    height={80}
+                                    className="max-w-full max-h-full object-contain"
+                                    style={{
+                                      imageRendering: 'auto'
+                                    } as React.CSSProperties}
+                                    unoptimized
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                    }}
+                                  />
+                                </div>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => handleDeleteImage(formData.thumbnail_url)}
+                                onClick={() => {
+                                  if (previewImage) {
+                                    setPreviewImage(null);
+                                  } else {
+                                    handleDeleteImage(formData.thumbnail_image_id);
+                                  }
+                                }}
                                 className="absolute -top-2 -right-2 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
                                 title="删除图片"
                               >
@@ -945,16 +1060,22 @@ function AdminContent() {
                       <TableRow key={workflow.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <Image
-                              src={workflow.thumbnail_url || '/placeholder.svg'}
-                              alt={workflow.title}
-                              width={40}
-                              height={40}
-                              className="w-10 h-10 rounded object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.svg';
-                              }}
-                            />
+                            <div className="w-10 h-10 flex items-center justify-center overflow-hidden rounded">
+                              <Image
+                                src={workflow.thumbnail_image_id ? `/api/images/${workflow.thumbnail_image_id}` : '/placeholder.svg'}
+                                alt={workflow.title}
+                                width={40}
+                                height={40}
+                                className="max-w-full max-h-full object-contain"
+                                style={{
+                                  imageRendering: 'auto'
+                                } as React.CSSProperties}
+                                unoptimized={workflow.thumbnail_image_id ? true : false}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                                }}
+                              />
+                            </div>
                             <div>
                               <div className="font-medium">{workflow.title}</div>
                               <div className="text-sm text-gray-500 truncate max-w-xs">
@@ -1133,16 +1254,22 @@ function AdminContent() {
                   <Card key={author.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-3">
-                        <Image
-                          src={author.avatar_url || '/default-avatar.svg'}
-                          alt={author.name}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
-                        />
+                        <div className="w-10 h-10 flex items-center justify-center overflow-hidden rounded-full flex-shrink-0">
+                          <Image
+                            src={author.avatar_url || '/default-avatar.svg'}
+                            alt={author.name}
+                            width={40}
+                            height={40}
+                            className="max-w-full max-h-full object-contain"
+                            style={{
+                              imageRendering: (author.avatar_url || '/default-avatar.svg').endsWith('.svg') ? 'auto' : 'crisp-edges'
+                            } as React.CSSProperties}
+                            unoptimized={(author.avatar_url || '/default-avatar.svg').endsWith('.svg')}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder.svg';
+                            }}
+                          />
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
                             <h3 className="font-medium">{author.name}</h3>
@@ -1322,21 +1449,39 @@ function AdminContent() {
                 </div>
                 
                 {/* 图片预览 */}
-                {formData.thumbnail_url && (
+                {(previewImage || formData.thumbnail_image_id) && (
                   <div className="mt-2 relative inline-block">
-                    <Image
-                      src={formData.thumbnail_url}
-                      alt="Logo预览"
-                      width={80}
-                      height={80}
-                      className="w-20 h-20 object-cover rounded border"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder.svg';
-                      }}
-                    />
+                    {previewImage ? (
+                      <img
+                        src={previewImage}
+                        alt="Logo预览"
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                    ) : (
+                      <Image
+                         src={`/api/images/${formData.thumbnail_image_id}`}
+                         alt="Logo预览"
+                         width={80}
+                         height={80}
+                         className="w-20 h-20 object-contain rounded border"
+                         style={{
+                           imageRendering: 'auto'
+                         } as React.CSSProperties}
+                         unoptimized
+                         onError={(e) => {
+                           (e.target as HTMLImageElement).src = '/placeholder.svg';
+                         }}
+                       />
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleDeleteImage(formData.thumbnail_url)}
+                      onClick={() => {
+                        if (previewImage) {
+                          setPreviewImage(null);
+                        } else {
+                          handleDeleteImage(formData.thumbnail_image_id);
+                        }
+                      }}
                       className="absolute -top-2 -right-2 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl cursor-pointer"
                       title="删除图片"
                     >

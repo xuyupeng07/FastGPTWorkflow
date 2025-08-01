@@ -40,20 +40,13 @@ export async function GET(
     // 组装完整的工作流数据
     const fullWorkflow = {
       ...workflow,
-      thumbnail: workflow.thumbnail_url || '/placeholder.svg', // 使用thumbnail_url字段
+      thumbnail: workflow.thumbnail_image_id ? `/api/images/${workflow.thumbnail_image_id}?variant=thumbnail` : '/fastgpt.svg',
       author: {
         name: workflow.author_name,
         avatar: workflow.author_avatar,
         bio: workflow.author_bio
       }
     };
-    
-    // 增加使用次数
-    await pool.query(`
-      UPDATE workflows 
-      SET usage_count = usage_count + 1 
-      WHERE id = $1
-    `, [id]);
     
     return createSuccessResponse(fullWorkflow);
   } catch (error) {
@@ -77,7 +70,7 @@ export async function PUT(
       category_id,
       demo_url,
       config,
-      thumbnail_url,
+      thumbnail_image_id,
       is_featured,
       is_published
     } = body;
@@ -90,7 +83,7 @@ export async function PUT(
         category_id = COALESCE($5, category_id),
          demo_url = COALESCE($6, demo_url),
          config = COALESCE($7, config),
-         thumbnail_url = COALESCE($8, thumbnail_url),
+         thumbnail_image_id = COALESCE($8, thumbnail_image_id),
          is_featured = COALESCE($9, is_featured),
          is_published = COALESCE($10, is_published),
          updated_at = CURRENT_TIMESTAMP
@@ -100,7 +93,7 @@ export async function PUT(
       id, title, description, author_id, category_id,
        demo_url,
        config ? JSON.stringify(config) : null,
-       thumbnail_url, is_featured, is_published
+       thumbnail_image_id, is_featured, is_published
     ]);
 
     if (result.rows.length === 0) {

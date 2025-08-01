@@ -1,9 +1,61 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 export function HeaderBackground() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 预定义的固定值数组，避免使用 Math.random()
+  const squarePositions = [
+    { top: 25, rotate: 15 },
+    { top: 45, rotate: 30 },
+    { top: 35, rotate: 10 },
+    { top: 55, rotate: 25 },
+    { top: 40, rotate: 20 },
+    { top: 60, rotate: 35 }
+  ];
+
+  const particlePositions = [
+    { left: 10, top: 20 },
+    { left: 25, top: 70 },
+    { left: 40, top: 30 },
+    { left: 60, top: 80 },
+    { left: 75, top: 15 },
+    { left: 85, top: 50 },
+    { left: 15, top: 90 },
+    { left: 95, top: 40 }
+  ];
+
+  const animationDelays = [0, 0.5, 1, 1.5, 0.3, 0.8, 1.2, 0.2];
+  const durations = [8, 10, 9, 11, 8.5, 9.5, 10.5, 8.8];
+
+  if (!mounted) {
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* 科技网格背景 */}
+        <div className="absolute inset-0 opacity-20">
+          <svg width="100%" height="100%" className="text-blue-300">
+            <defs>
+              <pattern id="headerGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.4"/>
+                <circle cx="20" cy="20" r="0.5" fill="currentColor" opacity="0.6"/>
+              </pattern>
+              <pattern id="headerSmallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.3" opacity="0.3"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#headerGrid)" />
+            <rect width="100%" height="100%" fill="url(#headerSmallGrid)" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* 科技网格背景 */}
@@ -31,8 +83,8 @@ export function HeaderBackground() {
             className="absolute w-2 h-2 border border-blue-300/30 bg-blue-100/20"
             style={{
               left: `${15 + i * 15}%`,
-              top: `${20 + Math.random() * 60}%`,
-              transform: `rotate(${Math.random() * 45}deg)`
+              top: `${squarePositions[i].top}%`,
+              transform: `rotate(${squarePositions[i].rotate}deg)`
             }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ 
@@ -41,9 +93,9 @@ export function HeaderBackground() {
               rotate: [0, 90, 180, 270, 360]
             }}
             transition={{
-              duration: 8 + Math.random() * 4,
+              duration: durations[i],
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: animationDelays[i],
               ease: "easeInOut"
             }}
           />
@@ -57,8 +109,8 @@ export function HeaderBackground() {
             key={`header-particle-${i}`}
             className="absolute w-1 h-1 bg-blue-400/40 rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`
+              left: `${particlePositions[i].left}%`,
+              top: `${particlePositions[i].top}%`
             }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ 
@@ -68,9 +120,9 @@ export function HeaderBackground() {
               x: [-3, 3, -3]
             }}
             transition={{
-              duration: 4 + Math.random() * 2,
+              duration: 4 + (i % 3),
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: animationDelays[i],
               ease: "easeInOut"
             }}
           />
@@ -95,9 +147,9 @@ export function HeaderBackground() {
               rotate: [0, 120, 240, 360]
             }}
             transition={{
-              duration: 6 + Math.random() * 2,
+              duration: 6 + (i % 2),
               repeat: Infinity,
-              delay: Math.random() * 3,
+              delay: i * 0.8,
               ease: "easeInOut"
             }}
           >
@@ -125,9 +177,9 @@ export function HeaderBackground() {
               y: [-8, 8, -5]
             }}
             transition={{
-              duration: 3 + Math.random() * 2,
+              duration: 3 + (i % 3),
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: i * 0.6,
               ease: "easeInOut"
             }}
           />
