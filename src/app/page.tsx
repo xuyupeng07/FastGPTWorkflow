@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { WorkflowGrid } from '@/components/WorkflowGrid';
+import { Partners } from '@/components/Partners';
 import { SideEffects } from '@/components/SideEffects';
 import { TechBackground } from '@/components/TechBackground';
 import { HydrationSafeWrapper, useDOMProtection, useSafeRender } from '@/components/HydrationSafeWrapper';
@@ -164,6 +165,7 @@ export default function Home() {
               selectedCategory={selectedCategory}
               onCategoryChange={handleCategoryChange}
             />
+            <Partners variant="compact" />
           </div>
         </div>
       </HydrationSafeWrapper>
