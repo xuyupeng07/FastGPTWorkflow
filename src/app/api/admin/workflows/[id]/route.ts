@@ -60,6 +60,15 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    
+    // 添加调试日志
+    console.log('=== 工作流更新调试信息 ===');
+    console.log('工作流ID:', id);
+    console.log('接收到的请求体:', JSON.stringify(body, null, 2));
+    console.log('no_login_url字段值:', body.no_login_url);
+    console.log('no_login_url类型:', typeof body.no_login_url);
+    console.log('========================');
+    
     const {
       title,
       description,
@@ -67,6 +76,7 @@ export async function PUT(
       category_id,
       thumbnail_image_id,
       demo_url,
+      no_login_url,
       is_featured,
       is_published,
       json_source
@@ -110,6 +120,12 @@ export async function PUT(
       }
 
       // 更新工作流基本信息
+      // 添加更新前的调试日志
+      console.log('=== 数据库更新参数 ===');
+      console.log('参数数组:', [id, title, description, author_id, category_id, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published, json_source]);
+      console.log('no_login_url参数值:', no_login_url);
+      console.log('==================');
+      
       const workflowResult = await client.query(`
         UPDATE workflows SET
           title = COALESCE($2, title),
@@ -118,16 +134,23 @@ export async function PUT(
           category_id = COALESCE($5, category_id),
           thumbnail_image_id = COALESCE($6, thumbnail_image_id),
           demo_url = COALESCE($7, demo_url),
-          is_featured = COALESCE($8, is_featured),
-          is_published = COALESCE($9, is_published),
-          json_source = COALESCE($10, json_source),
+          no_login_url = COALESCE($8, no_login_url),
+          is_featured = COALESCE($9, is_featured),
+          is_published = COALESCE($10, is_published),
+          json_source = COALESCE($11, json_source),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
         RETURNING *
       `, [
-        id, title, description, author_id, category_id, thumbnail_image_id, demo_url,
+        id, title, description, author_id, category_id, thumbnail_image_id, demo_url, no_login_url,
         is_featured, is_published, json_source
       ]);
+      
+      // 添加更新后的调试日志
+      console.log('=== 数据库更新结果 ===');
+      console.log('更新后的工作流数据:', JSON.stringify(workflowResult.rows[0], null, 2));
+      console.log('更新后的no_login_url:', workflowResult.rows[0]?.no_login_url);
+      console.log('==================');
       
       if (workflowResult.rows.length === 0) {
         throw new Error('工作流不存在');

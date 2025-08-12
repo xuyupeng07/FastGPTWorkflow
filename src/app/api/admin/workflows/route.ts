@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
       json_source,
       thumbnail_image_id,
       demo_url,
+      no_login_url,
       is_featured = false,
       is_published = true
     } = body;
@@ -175,12 +176,12 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(`
       INSERT INTO workflows (
         id, title, description, category_id, author_id,
-        json_source, thumbnail_image_id, demo_url, is_featured, is_published
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
       id, title, description, category_id, author_id,
-      json_source, thumbnail_image_id || null, demo_url, is_featured, is_published
+      json_source, thumbnail_image_id || null, demo_url, no_login_url, is_featured, is_published
     ]);
 
     return createSuccessResponse(result.rows[0], '工作流创建成功');

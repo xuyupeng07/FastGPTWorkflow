@@ -32,6 +32,7 @@ interface Workflow {
   usage_count: number;
   like_count: number;
   demo_url?: string;
+  no_login_url?: string;
   is_featured: boolean;
   is_published: boolean;
   created_at: string;
@@ -139,6 +140,7 @@ function AdminContent() {
     author_id: '',
     thumbnail_image_id: '',
     demo_url: '',
+    no_login_url: '',
     is_featured: false,
     is_published: true,
     json_source: '',
@@ -493,6 +495,7 @@ function AdminContent() {
       author_id: '',
       thumbnail_image_id: '',
       demo_url: '',
+      no_login_url: '',
       is_featured: false,
       is_published: true,
       json_source: '',
@@ -645,6 +648,7 @@ function AdminContent() {
       author_id: workflow.author_id.toString(),
       thumbnail_image_id: workflow.thumbnail_image_id || '',
       demo_url: workflow.demo_url || '',
+      no_login_url: workflow.no_login_url || '',
       is_featured: workflow.is_featured,
       is_published: workflow.is_published,
       json_source: workflow.json_source || '',
@@ -1171,6 +1175,16 @@ function AdminContent() {
                         </div>
                       </div>
 
+                      <div>
+                        <Label htmlFor="no_login_url">免登录窗口链接</Label>
+                        <Input
+                          id="no_login_url"
+                          value={formData.no_login_url}
+                          onChange={(e) => setFormData({ ...formData, no_login_url: e.target.value })}
+                          placeholder="免登录窗口链接（可选）"
+                        />
+                      </div>
+
                       <div className="flex items-center space-x-4">
                         <label className="flex items-center space-x-2">
                           <input
@@ -1670,6 +1684,16 @@ function AdminContent() {
                 value={formData.demo_url}
                 onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
                 placeholder="演示链接（可选）"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-no-login-url">免登录窗口链接</Label>
+              <Input
+                id="edit-no-login-url"
+                value={formData.no_login_url}
+                onChange={(e) => setFormData({ ...formData, no_login_url: e.target.value })}
+                placeholder="免登录窗口链接（可选）"
               />
             </div>
 

@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
-import { Search, Star } from 'lucide-react';
+import { Search, Star, LogIn, User, LogOut } from 'lucide-react';
 import { HeaderBackground } from './HeaderBackground';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -19,6 +20,9 @@ export function Header({ onSearch }: HeaderProps) {
   const [starCount, setStarCount] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const router = useRouter();
 
   const handleSearchChange = useSafeEventHandler((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -88,10 +92,31 @@ export function Header({ onSearch }: HeaderProps) {
   useEffect(() => {
     setMounted(true);
     fetchGitHubStars();
+    // 检查登录状态
+    checkLoginStatus();
     // 每30分钟更新一次星数，减少API请求频率
     const interval = setInterval(fetchGitHubStars, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const checkLoginStatus = () => {
+    if (typeof window !== 'undefined') {
+      const loginStatus = localStorage.getItem('isLoggedIn');
+      const storedUsername = localStorage.getItem('username');
+      setIsLoggedIn(loginStatus === 'true');
+      setUsername(storedUsername || '');
+    }
+  };
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('username');
+      setIsLoggedIn(false);
+      setUsername('');
+      router.push('/');
+    }
+  };
 
   // 防止水合不匹配 - 在客户端挂载前显示静态版本
   if (!mounted) {
@@ -142,12 +167,43 @@ export function Header({ onSearch }: HeaderProps) {
                 <span className="hidden sm:inline text-sm sm:text-base font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-200">GitHub</span>
               </a>
             </Button>
+            
             <Button size="sm" asChild className="bg-black text-white hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg px-3 sm:px-4 text-sm">
               <a href="https://cloud.fastgpt.cn/login" target="_blank" rel="noopener noreferrer">
                 <span className="hidden sm:inline">开始使用</span>
                 <span className="sm:hidden">使用</span>
               </a>
             </Button>
+            
+            {/* 登录/登出按钮 - 动态版本 */}
+            {mounted && (
+              isLoggedIn ? (
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-sm text-gray-700">欢迎, {username}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleLogout}
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline text-sm">登出</span>
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  asChild
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                >
+                  <Link href="/login">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline text-sm">登录</span>
+                  </Link>
+                </Button>
+              )
+            )}
           </div>
         </div>
         
@@ -238,6 +294,35 @@ export function Header({ onSearch }: HeaderProps) {
               <span className="sm:hidden">使用</span>
             </a>
           </Button>
+          
+          {mounted && (
+            isLoggedIn ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline text-sm text-gray-700">欢迎, {username}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline text-sm">登出</span>
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                asChild
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+              >
+                <Link href="/login">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline text-sm">登录</span>
+                </Link>
+              </Button>
+            )
+          )}
         </div>
       </div>
       

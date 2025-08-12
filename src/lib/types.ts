@@ -114,7 +114,8 @@ export interface Workflow {
     avatar?: string;
   };
   config: FastGPTWorkflowConfig;
-  demoUrl?: string;
+  demo_url?: string;
+  no_login_url?: string;
   json_source?: string;
   is_featured?: boolean;
 }

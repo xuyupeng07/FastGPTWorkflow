@@ -165,25 +165,42 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     
     if (!isClient) return; // 确保在客户端
     
-    if (workflow.demoUrl) {
-      window.open(workflow.demoUrl, '_blank');
+    // 检查用户登录状态
+    const isLoggedIn = typeof window !== 'undefined' ? localStorage.getItem('isLoggedIn') === 'true' : false;
+    
+    // 未登录用户：直接在新窗口打开demo_url
+    if (!isLoggedIn && workflow.demo_url) {
+      window.open(workflow.demo_url, '_blank');
       
       // 记录try行为
       if (userSessionId) {
-        // 异步记录行为，不阻塞UI
         recordUserAction('try')
           .then(() => {
-            // API调用成功后，更新使用数量
             setUsageCount(prev => prev + 1);
           })
           .catch((_error) => {
             console.error('记录try行为失败:', _error);
           });
       }
-    } else {
-      console.warn('该工作流没有设置演示URL');
+      return;
     }
-  }, [isClient, workflow.demoUrl, userSessionId, workflow.id]), [isClient, workflow.demoUrl, userSessionId, workflow.id]);
+    
+    // 登录用户：打开iframe体验弹窗
+    setShowExperience(true);
+    
+    // 记录try行为
+    if (userSessionId) {
+      // 异步记录行为，不阻塞UI
+      recordUserAction('try')
+        .then(() => {
+          // API调用成功后，更新使用数量
+          setUsageCount(prev => prev + 1);
+        })
+        .catch((_error) => {
+          console.error('记录try行为失败:', _error);
+        });
+    }
+  }, [isClient, userSessionId, workflow.id, workflow.demo_url]), [isClient, userSessionId, workflow.id, workflow.demo_url]);
 
 
 
@@ -549,7 +566,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                size="sm"
                onClick={handleTryWorkflow}
                className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6"
-               disabled={!workflow.demoUrl}
+               disabled={!workflow.demo_url && !workflow.no_login_url}
              >
                Try
              </Button>

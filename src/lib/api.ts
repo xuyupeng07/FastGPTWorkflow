@@ -35,6 +35,7 @@ export interface ApiWorkflow {
   author_name: string;
   author_avatar?: string;
   demo_url?: string;
+  no_login_url?: string;
 
   config?: Record<string, unknown>;
   is_featured?: boolean;
@@ -198,8 +199,8 @@ export function transformApiWorkflowToWorkflow(apiWorkflow: ApiWorkflow): import
       avatar: apiWorkflow.author_avatar || '/avatars/default.jpg',
     },
     config: transformedConfig,
-    ...(apiWorkflow.demo_url && { demoUrl: apiWorkflow.demo_url }),
-
+    ...(apiWorkflow.demo_url && { demo_url: apiWorkflow.demo_url }),
+    ...(apiWorkflow.no_login_url && { no_login_url: apiWorkflow.no_login_url }),
 
     ...(apiWorkflow.is_featured !== undefined && { is_featured: apiWorkflow.is_featured }),
   };
