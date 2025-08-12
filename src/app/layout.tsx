@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,7 +29,6 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
         {/* 防止插件干扰的安全策略 */}
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
         <meta name="referrer" content="origin-when-cross-origin" />
       </head>
       <body 
@@ -39,10 +39,29 @@ export default function RootLayout({
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
         }}
       >
-        <div id="app-root" data-hydration-safe="true">
-          {children}
-        </div>
-        <Toaster />
+        <AuthProvider>
+          <div id="app-root" data-hydration-safe="true">
+            {children}
+          </div>
+          <Toaster 
+            position="top-center" 
+            closeButton 
+            expand={true}
+            visibleToasts={5}
+            toastOptions={{
+              style: {
+                backgroundColor: '#ffffff !important',
+                color: '#000000 !important',
+                border: '1px solid #e5e7eb !important',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15) !important',
+                marginBottom: '8px !important',
+              },
+              className: '',
+              duration: 4000,
+              unstyled: false,
+            }}
+          />
+        </AuthProvider>
 
         {/* FastGPT聊天机器人 */}
         <script 

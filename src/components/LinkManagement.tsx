@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Search, Filter, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // 定义链接信息的类型
 type LinkInfo = {
@@ -54,6 +55,7 @@ type FilterState = {
 };
 
 const LinkManagement: React.FC = () => {
+    const { confirm, ConfirmDialog } = useConfirmDialog();
     const [links, setLinks] = useState<LinkInfo[]>([]);
     const [platforms, setPlatforms] = useState<PlatformInfo[]>([]);
     const [sourceTypes, setSourceTypes] = useState<SourceTypeInfo[]>([]);
@@ -174,7 +176,18 @@ const LinkManagement: React.FC = () => {
 
     // 删除平台
     const deletePlatform = async (platformId: number) => {
-        if (!confirm('确定要删除这个平台吗？')) return;
+        confirm({
+            title: '删除平台',
+            description: '确定要删除这个平台吗？此操作无法撤销。',
+            variant: 'destructive',
+            confirmText: '删除',
+            onConfirm: async () => {
+                await deletePlatformAction(platformId);
+            }
+        });
+    };
+
+    const deletePlatformAction = async (platformId: number) => {
         
         try {
             const response = await axios.delete('/api/platforms', {
@@ -193,7 +206,18 @@ const LinkManagement: React.FC = () => {
 
     // 删除来源类型
     const deleteSourceType = async (sourceTypeId: number) => {
-        if (!confirm('确定要删除这个来源类型吗？')) return;
+        confirm({
+            title: '删除来源类型',
+            description: '确定要删除这个来源类型吗？此操作无法撤销。',
+            variant: 'destructive',
+            confirmText: '删除',
+            onConfirm: async () => {
+                await deleteSourceTypeAction(sourceTypeId);
+            }
+        });
+    };
+
+    const deleteSourceTypeAction = async (sourceTypeId: number) => {
         
         try {
             const response = await axios.delete('/api/sourcetypes', {
@@ -212,7 +236,18 @@ const LinkManagement: React.FC = () => {
 
     // 删除项目
     const deleteProject = async (projectId: number) => {
-        if (!confirm('确定要删除这个项目吗？')) return;
+        confirm({
+            title: '删除项目',
+            description: '确定要删除这个项目吗？此操作无法撤销。',
+            variant: 'destructive',
+            confirmText: '删除',
+            onConfirm: async () => {
+                await deleteProjectAction(projectId);
+            }
+        });
+    };
+
+    const deleteProjectAction = async (projectId: number) => {
         
         try {
             const response = await axios.delete('/api/projects', {
@@ -381,9 +416,18 @@ const LinkManagement: React.FC = () => {
 
     // 删除链接
     const handleDeleteLink = async (linkId: number) => {
-        if (!confirm('确定要删除这个链接吗？此操作不可撤销。')) {
-            return;
-        }
+        confirm({
+            title: '删除链接',
+            description: '确定要删除这个链接吗？此操作不可撤销。',
+            variant: 'destructive',
+            confirmText: '删除',
+            onConfirm: async () => {
+                await deleteLinkAction(linkId);
+            }
+        });
+    };
+
+    const deleteLinkAction = async (linkId: number) => {
 
         try {
             const response = await axios.delete(`/api/linkmanagelists/${linkId}`);
@@ -855,6 +899,8 @@ const LinkManagement: React.FC = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            
+            <ConfirmDialog />
         </div>
     );
 };

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import Image from 'next/image';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AdminLogin from '@/components/AdminLogin';
@@ -78,6 +79,7 @@ const API_BASE_URL = getApiUrl();
 
 function AdminContent() {
   const { logout } = useAuth();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -438,7 +440,18 @@ function AdminContent() {
 
   // 删除工作流
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这个工作流吗？')) return;
+    confirm({
+      title: '删除工作流',
+      description: '确定要删除这个工作流吗？此操作无法撤销。',
+      variant: 'destructive',
+      confirmText: '删除',
+      onConfirm: async () => {
+        await deleteWorkflow(id);
+      }
+    });
+  };
+
+  const deleteWorkflow = async (id: string) => {
 
     try {
       // 先获取工作流信息，以便解除图片关联
@@ -744,7 +757,18 @@ function AdminContent() {
 
   // 删除分类
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('确定要删除这个分类吗？删除后相关的工作流将被移动到默认分类。')) return;
+    confirm({
+      title: '删除分类',
+      description: '确定要删除这个分类吗？删除后相关的工作流将被移动到默认分类。',
+      variant: 'destructive',
+      confirmText: '删除',
+      onConfirm: async () => {
+        await deleteCategoryAction(id);
+      }
+    });
+  };
+
+  const deleteCategoryAction = async (id: string) => {
 
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
@@ -1833,6 +1857,8 @@ function AdminContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <ConfirmDialog />
     </div>
   );
 }

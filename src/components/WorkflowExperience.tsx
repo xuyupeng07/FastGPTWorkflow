@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WorkflowExperienceProps {
   workflow: Workflow;
@@ -20,17 +21,15 @@ interface WorkflowExperienceProps {
 
 export function WorkflowExperience({ workflow, isOpen, onClose }: WorkflowExperienceProps) {
   const [isClient, setIsClient] = useState(false);
+  const { isAuthenticated } = useAuth();
   
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // 检查用户登录状态
-  const isLoggedIn = isClient && typeof window !== 'undefined' ? localStorage.getItem('isLoggedIn') === 'true' : false;
-  
   // 根据登录状态选择URL
   const getTargetUrl = () => {
-    if (isLoggedIn && workflow.no_login_url) {
+    if (isAuthenticated && workflow.no_login_url) {
       return workflow.no_login_url;
     } else if (workflow.demo_url) {
       return workflow.demo_url;

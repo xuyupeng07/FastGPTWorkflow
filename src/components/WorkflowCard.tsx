@@ -9,8 +9,10 @@ import { WorkflowExperience } from '@/components/WorkflowExperience';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Users, Heart, CheckCircle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getUserSessionId } from '@/lib/userSession';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { getApiUrl } from '@/lib/config';
 
@@ -23,6 +25,7 @@ interface WorkflowCardProps {
 export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   // 客户端渲染状态 - 必须在最前面声明
   const [isClient, setIsClient] = useState(false);
+  const { isAuthenticated } = useAuth();
   
   const [showExperience, setShowExperience] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -151,8 +154,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     } catch (err) {
       console.error('复制失败:', err);
       setCopySuccess(false);
-      // 可以添加toast提示
-      alert(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`);
+      toast.error(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`);
     } finally {
       setCopying(false);
     }
@@ -165,11 +167,8 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     
     if (!isClient) return; // 确保在客户端
     
-    // 检查用户登录状态
-    const isLoggedIn = typeof window !== 'undefined' ? localStorage.getItem('isLoggedIn') === 'true' : false;
-    
     // 未登录用户：直接在新窗口打开demo_url
-    if (!isLoggedIn && workflow.demo_url) {
+    if (!isAuthenticated && workflow.demo_url) {
       window.open(workflow.demo_url, '_blank');
       
       // 记录try行为
@@ -535,41 +534,55 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
 
           {/* 操作按钮 */}
           <div className="flex gap-1 sm:gap-1.5">
-            <Button 
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleCopyJson}
-              disabled={copying}
-              className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
-                copying ? 'opacity-70 cursor-not-allowed' : ''
-              } ${
-                copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
-              }`}
+            <Tooltip 
+              content="复制工作流配置JSON"
+              side="bottom"
+              align="center"
+              className="text-xs bg-gray-900 text-white border-gray-700"
             >
-              {copying ? (
-                <>
-                  <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
-                  复制中...
-                </>
-              ) : copySuccess ? (
-                <>
-                  <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
-                  已复制
-                </>
-              ) : (
-                <>                  Copy                </>
-              )}
-            </Button>
-            <Button 
-               type="button"
-               size="sm"
-               onClick={handleTryWorkflow}
-               className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6"
-               disabled={!workflow.demo_url && !workflow.no_login_url}
+              <Button 
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCopyJson}
+                disabled={copying}
+                className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
+                  copying ? 'opacity-70 cursor-not-allowed' : ''
+                } ${
+                  copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
+                }`}
+              >
+                {copying ? (
+                  <>
+                    <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
+                    复制中...
+                  </>
+                ) : copySuccess ? (
+                  <>
+                    <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
+                    已复制
+                  </>
+                ) : (
+                  <>                  Copy                </>
+                )}
+              </Button>
+            </Tooltip>
+            <Tooltip 
+               content={isAuthenticated ? "跳转至工作流免登录窗口" : "跳转至FastGPT并自动填充工作流"}
+               side="bottom"
+               align="center"
+               className="text-xs bg-gray-900 text-white border-gray-700"
              >
-               Try
-             </Button>
+              <Button 
+                 type="button"
+                 size="sm"
+                 onClick={handleTryWorkflow}
+                 className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6"
+                 disabled={!workflow.demo_url && !workflow.no_login_url}
+               >
+                 Try
+               </Button>
+            </Tooltip>
           </div>
         </div>
       </Card>

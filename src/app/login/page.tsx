@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const [credentials, setCredentials] = useState({
@@ -18,13 +19,20 @@ export default function LoginPage() {
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const { login, isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 如果已经登录，重定向到主页
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      router.push('/');
+    }
+  }, [isAuthenticated, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,15 +47,10 @@ export default function LoginPage() {
       return;
     }
 
-    setIsLoading(true);
     try {
-      // 这里可以添加实际的登录逻辑
-      // 目前只是模拟登录
-      if (credentials.username === 'admin' && credentials.password === 'admin123') {
+      const success = await login(credentials);
+      if (success) {
         toast.success('登录成功！');
-        // 可以在这里设置登录状态
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('username', credentials.username);
         router.push('/');
       } else {
         toast.error('用户名或密码错误');
@@ -55,8 +58,6 @@ export default function LoginPage() {
     } catch (error) {
       console.error('登录失败:', error);
       toast.error('登录失败，请稍后重试');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -86,8 +87,8 @@ export default function LoginPage() {
         {/* 返回首页按钮 */}
         <div className="flex justify-start">
           <Link href="/" className="flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            <span className="text-sm">返回首页</span>
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            <span className="text-base font-medium">返回首页</span>
           </Link>
         </div>
 
@@ -103,12 +104,7 @@ export default function LoginPage() {
               priority
             />
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            用户登录
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            登录后可以享受更多功能
-          </p>
+
         </div>
         
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -136,7 +132,7 @@ export default function LoginPage() {
                     placeholder="请输入用户名"
                     value={credentials.username}
                     onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                    disabled={isLoading}
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -157,13 +153,13 @@ export default function LoginPage() {
                     placeholder="请输入密码"
                     value={credentials.password}
                     onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                    disabled={isLoading}
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -178,9 +174,9 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   className="w-full bg-black text-white hover:bg-gray-800 transition-all duration-200 shadow-md hover:shadow-lg"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
-                  {isLoading ? '登录中...' : '登录'}
+                  {loading ? '登录中...' : '登录'}
                 </Button>
               </div>
             </form>
@@ -188,7 +184,7 @@ export default function LoginPage() {
         </Card>
         
         <div className="text-center text-sm text-gray-500">
-          <p>还没有账号？<span className="text-blue-600 hover:text-blue-800 cursor-pointer">立即注册</span></p>
+          <p>还没有账号？<Link href="/register" className="text-blue-600 hover:text-blue-800 cursor-pointer transition-colors duration-200">立即注册</Link></p>
         </div>
       </motion.div>
     </div>

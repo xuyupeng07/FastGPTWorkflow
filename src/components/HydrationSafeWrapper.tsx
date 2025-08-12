@@ -56,26 +56,123 @@ export function ClientOnlyWrapper({ children, fallback }: { children: ReactNode;
 export function useSafeLocalStorage(key: string, initialValue: string = '') {
   const [value, setValue] = useState<string>(initialValue);
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  // 备用存储键名
+  const backupKey = `backup_${key}`;
 
   useEffect(() => {
     try {
-      const item = window.localStorage.getItem(key);
-      if (item !== null) {
+      // 检查localStorage是否可用
+      if (typeof window === 'undefined' || !window.localStorage) {
+        console.warn(`localStorage不可用，key: ${key}`);
+        setValue(initialValue);
+        setIsLoaded(true);
+        return;
+      }
+
+      // 检查localStorage总体状态
+       console.log(`localStorage总项目数: ${localStorage.length}`);
+
+      let item = window.localStorage.getItem(key);
+      console.log(`localStorage读取: ${key} = ${item}`);
+      
+      // 如果localStorage为空，尝试从sessionStorage恢复
+      if ((item === null || item === '') && window.sessionStorage) {
+        const backupItem = window.sessionStorage.getItem(backupKey);
+        console.log(`sessionStorage备份读取: ${backupKey} = ${backupItem}`);
+        if (backupItem !== null && backupItem !== '') {
+          item = backupItem;
+          // 恢复到localStorage
+          try {
+            window.localStorage.setItem(key, item);
+            console.log(`从sessionStorage恢复到localStorage: ${key} = ${item}`);
+          } catch (e) {
+            console.warn(`恢复到localStorage失败: ${e}`);
+          }
+        }
+      }
+      
+      if (item !== null && item !== '') {
         setValue(item);
+        console.log(`存储恢复成功: ${key} = ${item}`);
+      } else {
+        setValue(initialValue);
+        console.log(`存储为空，使用初始值: ${key} = ${initialValue}`);
       }
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
+      setValue(initialValue);
     } finally {
       setIsLoaded(true);
     }
-  }, [key]);
+  }, [key, initialValue]);
+
+  // 定期检查localStorage是否被清除，如果是则从sessionStorage恢复
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkInterval = setInterval(() => {
+      try {
+        const currentItem = window.localStorage.getItem(key);
+        // 如果localStorage中的值与React状态不一致，且React状态不为空
+        if (value && value !== '' && (currentItem === null || currentItem === '')) {
+          console.warn(`检测到localStorage数据丢失: ${key}`);
+          
+          // 尝试从sessionStorage恢复
+          if (window.sessionStorage) {
+            const backupItem = window.sessionStorage.getItem(backupKey);
+            if (backupItem && backupItem === value) {
+              try {
+                window.localStorage.setItem(key, backupItem);
+                console.log(`自动从sessionStorage恢复localStorage: ${key} = ${backupItem}`);
+              } catch (e) {
+                console.warn(`自动恢复失败: ${e}`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`定期检查localStorage失败: ${error}`);
+      }
+    }, 5000); // 每5秒检查一次
+
+    return () => clearInterval(checkInterval);
+  }, [key, value, isLoaded, backupKey]);
 
   const setStoredValue = (newValue: string) => {
     try {
-      setValue(newValue);
-      window.localStorage.setItem(key, newValue);
+      // 检查localStorage是否可用
+      if (typeof window === 'undefined' || !window.localStorage) {
+        console.warn(`localStorage不可用，无法设置 ${key}`);
+        setValue(newValue); // 至少更新React状态
+        return;
+      }
+
+      // 先写localStorage，成功后再更新React状态
+       window.localStorage.setItem(key, newValue);
+       
+       // 同时写入sessionStorage作为备份
+       if (window.sessionStorage) {
+         try {
+           window.sessionStorage.setItem(backupKey, newValue);
+           console.log(`sessionStorage备份成功: ${backupKey} = ${newValue}`);
+         } catch (e) {
+           console.warn(`sessionStorage备份失败: ${e}`);
+         }
+       }
+       
+       // 验证写入是否成功
+       const verifyValue = window.localStorage.getItem(key);
+       if (verifyValue === newValue) {
+         setValue(newValue);
+         console.log(`localStorage设置并验证成功: ${key} = ${newValue}`);
+       } else {
+         console.error(`localStorage写入验证失败: ${key}, 期望: ${newValue}, 实际: ${verifyValue}`);
+         setValue(newValue); // 仍然更新React状态
+       }
     } catch (error) {
       console.warn(`Error setting localStorage key "${key}":`, error);
+      setValue(newValue); // localStorage失败时仍更新React状态
     }
   };
 
