@@ -259,14 +259,22 @@ function AdminContent() {
 
   // 生成演示链接
   const generateDemoUrl = async () => {
-    if (!formData.title || !formData.json_source || !formData.source_type || !formData.platform) {
-      toast.error('请先填写工作流标题、JSON源码、来源类型和平台');
+    if (!formData.title || !formData.source_type || !formData.platform) {
+      toast.error('请先填写工作流标题、来源类型和平台');
       return;
     }
 
     setGeneratingDemoUrl(true);
     try {
-      // 1. 先在urlgeneration中创建项目
+      let workflowUrl = null;
+      
+      // 无论是新建还是编辑模式，都需要确保workflow表中有正确的数据
+      if (!formData.json_source) {
+        toast.error('请先填写JSON源码');
+        return;
+      }
+      
+      // 1. 先在urlgeneration中创建或更新项目
       const projectResponse = await fetch('/api/projects', {
         method: 'POST',
         headers: {
@@ -281,29 +289,66 @@ function AdminContent() {
 
       const projectResult = await projectResponse.json();
       if (!projectResult.success) {
-        // 如果是工作流名称已存在的错误，不抛出异常，继续执行
+        // 如果是工作流名称已存在的错误，需要更新现有项目
         if (projectResult.message && projectResult.message.includes('已存在')) {
-          console.log('项目已存在，继续生成短链:', projectResult.message);
-          // 需要获取现有项目的URL
-          const existingProjectResponse = await fetch('/api/projects');
-          const existingProjects = await existingProjectResponse.json();
-          if (existingProjects.success) {
-            const existingProject = existingProjects.projects.find((p: any) => p.project_code === formData.title);
-            if (existingProject && existingProject.url) {
-              projectResult.url = existingProject.url;
-              projectResult.success = true;
+          console.log('项目已存在，更新现有项目:', projectResult.message);
+          
+          // 更新现有项目的workflow数据
+          try {
+            const updateResponse = await fetch('/api/projects/update', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                projectCode: formData.title,
+                projectDescription: formData.description,
+                workflow: JSON.parse(formData.json_source)
+              }),
+            });
+            
+            const updateResult = await updateResponse.json();
+            if (updateResult.success) {
+              workflowUrl = updateResult.url;
             } else {
-              throw new Error('无法获取现有项目的URL');
+              // 如果更新失败，尝试获取现有项目的URL
+              const existingProjectResponse = await fetch('/api/projects');
+              const existingProjects = await existingProjectResponse.json();
+              if (existingProjects.success) {
+                const existingProject = existingProjects.projects.find((p: any) => p.project_code === formData.title);
+                if (existingProject && existingProject.url) {
+                  workflowUrl = existingProject.url;
+                } else {
+                  throw new Error('无法获取现有项目的URL');
+                }
+              } else {
+                throw new Error('无法获取现有项目信息');
+              }
             }
-          } else {
-            throw new Error('无法获取现有项目信息');
+          } catch (updateError) {
+            console.error('更新项目失败，尝试获取现有URL:', updateError);
+            // 如果更新失败，尝试获取现有项目的URL
+            const existingProjectResponse = await fetch('/api/projects');
+            const existingProjects = await existingProjectResponse.json();
+            if (existingProjects.success) {
+              const existingProject = existingProjects.projects.find((p: any) => p.project_code === formData.title);
+              if (existingProject && existingProject.url) {
+                workflowUrl = existingProject.url;
+              } else {
+                throw new Error('无法获取现有项目的URL');
+              }
+            } else {
+              throw new Error('无法获取现有项目信息');
+            }
           }
         } else {
           throw new Error(projectResult.message || '创建项目失败');
         }
+      } else {
+        workflowUrl = projectResult.url;
       }
 
-      // 2. 生成短链
+      // 2. 生成登录跳转短链
       const linkResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -313,14 +358,14 @@ function AdminContent() {
           sourceType: formData.source_type,
           platform: formData.platform,
           projectCode: formData.title,
-          workflow_url: projectResult.url
+          workflow_url: workflowUrl
         }),
       });
 
       const linkResult = await linkResponse.json();
       if (linkResult.shortUrl) {
         setFormData({ ...formData, demo_url: linkResult.shortUrl });
-        toast.success('演示链接生成成功！');
+        toast.success('登录跳转短链生成成功！');
       } else {
         throw new Error('生成短链失败');
       }
@@ -654,6 +699,7 @@ function AdminContent() {
   // 编辑工作流
   const handleEdit = (workflow: Workflow) => {
     setEditingWorkflow(workflow);
+    
     setFormData({
       title: workflow.title,
       description: workflow.description,
@@ -665,8 +711,8 @@ function AdminContent() {
       is_featured: workflow.is_featured,
       is_published: workflow.is_published,
       json_source: workflow.json_source || '',
-      source_type: '',
-      platform: ''
+      source_type: 'FastAgent',
+      platform: 'FastAgent'
     });
     setIsEditDialogOpen(true);
   };
@@ -1192,9 +1238,9 @@ function AdminContent() {
                             type="button"
                             onClick={generateDemoUrl}
                             disabled={generatingDemoUrl || !formData.title || !formData.json_source || !formData.source_type || !formData.platform}
-                            variant="outline"
+                            className="bg-blue-500 text-white hover:bg-blue-600 whitespace-nowrap"
                           >
-                            {generatingDemoUrl ? '生成中...' : '自动生成'}
+                            {generatingDemoUrl ? '生成中...' : '生成链接'}
                           </Button>
                         </div>
                       </div>
@@ -1634,6 +1680,40 @@ function AdminContent() {
               </div>
             </div>
 
+            {/* 演示链接生成相关字段 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-source-type">来源类型</Label>
+                <Select value={formData.source_type} onValueChange={(value) => setFormData({ ...formData, source_type: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择来源类型" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {sourceTypes.map((sourceType: any) => (
+                      <SelectItem key={sourceType.id} value={sourceType.name}>
+                        {sourceType.name} ({sourceType.name_en})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-platform">媒体平台</Label>
+                <Select value={formData.platform} onValueChange={(value) => setFormData({ ...formData, platform: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择媒体平台" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {platforms.map((platform: any) => (
+                      <SelectItem key={platform.id} value={platform.name}>
+                        {platform.name} ({platform.abbreviation})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="edit-thumbnail-url">工作流Logo</Label>
               <div className="space-y-3">
@@ -1703,12 +1783,22 @@ function AdminContent() {
             </div>
             <div>
               <Label htmlFor="edit-demo-url">演示URL</Label>
-              <Input
-                id="edit-demo-url"
-                value={formData.demo_url}
-                onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
-                placeholder="演示链接（可选）"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="edit-demo-url"
+                  value={formData.demo_url}
+                  onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
+                  placeholder="演示链接（可选）"
+                />
+                <Button
+                  type="button"
+                  onClick={generateDemoUrl}
+                  disabled={generatingDemoUrl || !formData.title || !formData.json_source || !formData.source_type || !formData.platform}
+                  className="bg-blue-500 text-white hover:bg-blue-600 whitespace-nowrap"
+                >
+                  {generatingDemoUrl ? '生成中...' : '生成链接'}
+                </Button>
+              </div>
             </div>
 
             <div>

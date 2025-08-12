@@ -14,17 +14,17 @@ function getCurrentDomain(req: NextRequest): string {
 const generateLongUrl = (sourceTypeEn: string, abbreviation: string, projectCode: string, workflow_url: string): string => {
     // 如果workflow_url为空，不添加utm_workflow参数
     if (workflow_url===null) {
-        return `https://cloud.fastgpt.cn/login?lastRoute=%2Fapp%2Flist&utm_source=${sourceTypeEn}&utm_medium=${abbreviation}&utm_content=${projectCode}`;
+        return `https://cloud.fastgpt.cn/login?lastRoute=%2Fapp%2Flist&utm_source=${sourceTypeEn}&utm_medium=${abbreviation}&utm_content=${encodeURIComponent(projectCode)}`;
     }
-    // 否则包含utm_workflow参数
-    return `https://cloud.fastgpt.cn/login?lastRoute=%2Fapp%2Flist&utm_source=${sourceTypeEn}&utm_medium=${abbreviation}&utm_content=${projectCode}&utm_workflow=${workflow_url}`;
+    // 否则包含utm_workflow参数，需要对URL进行编码
+    return `https://cloud.fastgpt.cn/login?lastRoute=%2Fapp%2Flist&utm_source=${sourceTypeEn}&utm_medium=${abbreviation}&utm_content=${encodeURIComponent(projectCode)}&utm_workflow=${encodeURIComponent(workflow_url)}`;
 };
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const currentDomain = getCurrentDomain(request);
-        const { sourceType, platform, projectCode } = body;
+        const { sourceType, platform, projectCode, workflow_url } = body;
 
         // 参数验证
         if (!sourceType || !platform || !projectCode) {
@@ -56,22 +56,25 @@ export async function POST(request: NextRequest) {
             ? sourceTypeData[0].en
             : sourceType;
 
-        // 从数据库获取项目的workflow URL
-        const projectResult = await mysqlQuery(
-            'SELECT url FROM workflow WHERE project_code = ?',
-            [projectCode]
-        ) as any[];
-        
-        if (projectResult.length === 0) {
-            return NextResponse.json(
-                { error: '项目不存在' },
-                { status: 404 }
-            );
+        // 如果没有传入workflow_url，则从数据库获取项目的workflow URL
+        let finalWorkflowUrl = workflow_url;
+        if (!finalWorkflowUrl) {
+            const projectResult = await mysqlQuery(
+                'SELECT url FROM workflow WHERE project_code = ?',
+                [projectCode]
+            ) as any[];
+            
+            if (projectResult.length === 0) {
+                return NextResponse.json(
+                    { error: '项目不存在' },
+                    { status: 404 }
+                );
+            }
+            
+            finalWorkflowUrl = projectResult[0].url;
         }
         
-        const workflow_url = projectResult[0].url;
-        
-        const longUrl = generateLongUrl(sourceTypeEn, platformAbbreviation, projectCode, workflow_url);
+        const longUrl = generateLongUrl(sourceTypeEn, platformAbbreviation, projectCode, finalWorkflowUrl);
 
         // 使用当前时间
         const currentTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -82,14 +85,10 @@ export async function POST(request: NextRequest) {
 
         const shortChainId = Math.floor(Math.random() * 100000);
 
+        // 检查是否存在相同的链接，如果存在则更新，否则创建新的
+        let existingLink: any[] = [];
         try {
-            const existingLink = await mysqlQuery(`SELECT * FROM link_info WHERE source_type = ? AND platform = ? AND project_code = ?`, [sourceType, platform, projectCode]) as any[];
-            if (existingLink.length > 0) {
-                return NextResponse.json(
-                    { error: '短链已存在' },
-                    { status: 400 }
-                );
-            }
+            existingLink = await mysqlQuery(`SELECT * FROM link_info WHERE source_type = ? AND platform = ? AND project_code = ?`, [sourceType, platform, projectCode]) as any[];
         } catch (error) {
             console.error('数据库查询出错', error);
             return NextResponse.json(
@@ -98,28 +97,80 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // 确保workflow表中存在对应的project_code记录
+        try {
+            const workflowExists = await mysqlQuery(
+                'SELECT project_code FROM workflow WHERE project_code = ?',
+                [projectCode]
+            ) as any[];
+            
+            if (workflowExists.length === 0) {
+                // 如果workflow表中不存在该project_code，则插入一条记录
+                await mysqlQuery(
+                    'INSERT INTO workflow (project_code, url) VALUES (?, ?)',
+                    [projectCode, finalWorkflowUrl]
+                );
+            }
+        } catch (error) {
+            console.error('创建workflow记录失败:', error);
+            return NextResponse.json(
+                { error: '创建workflow记录失败' },
+                { status: 500 }
+            );
+        }
 
-        // 创建数据库记录 - 使用link_info表并明确指定created_at和description
-        await mysqlQuery(
-            `INSERT INTO link_info (
-                source_type, platform, project_code, short_url, long_url, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?);`,
-            [sourceType, platform, projectCode, shortChainId, longUrl, currentTime]
-        );
-
-        // 获取最后插入的记录ID
-        const [result] = await mysqlQuery('SELECT LAST_INSERT_ID() as id') as any[];
-        const insertId = result.id;
-
-        const shortUrl = `${currentDomain}/${insertId}`;
+        let insertId: number;
+        let shortUrl: string;
         
-        // 更新记录的短链接字段
-        await mysqlQuery(
-            `UPDATE link_info SET short_url = ? WHERE id = ?`,
-            [shortUrl, insertId]
-        );
+        if (existingLink.length > 0) {
+            // 如果存在相同的链接，更新现有记录
+            insertId = existingLink[0].id;
+            shortUrl = `${currentDomain}/${insertId}`;
+            
+            await mysqlQuery(
+                `UPDATE link_info SET long_url = ?, short_url = ?, created_at = ? WHERE id = ?`,
+                [longUrl, shortUrl, currentTime, insertId]
+            );
+        } else {
+            // 如果不存在，创建新的数据库记录
+            await mysqlQuery(
+                `INSERT INTO link_info (
+                    source_type, platform, project_code, short_url, long_url, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?);`,
+                [sourceType, platform, projectCode, shortChainId, longUrl, currentTime]
+            );
 
-        // 返回完整的新记录对象
+            // 获取最后插入的记录ID
+            const [result] = await mysqlQuery('SELECT LAST_INSERT_ID() as id') as any[];
+            insertId = result.id;
+
+            shortUrl = `${currentDomain}/${insertId}`;
+            
+            // 更新记录的短链接字段
+            await mysqlQuery(
+                `UPDATE link_info SET short_url = ? WHERE id = ?`,
+                [shortUrl, insertId]
+            );
+        }
+
+        // 同时更新workflow表中的url字段，确保指向正确的API JSON URL
+        try {
+            // 生成正确的API JSON URL
+            const host = request.headers.get('host') || 'qktyoucivudx.sealoshzh.site';
+            const protocol = host.includes('localhost') ? 'http' : 'https';
+            const apiJsonUrl = `${protocol}://${host}/api/json/${projectCode}`;
+            
+            await mysqlQuery(
+                `UPDATE workflow SET url = ? WHERE project_code = ?`,
+                [apiJsonUrl, projectCode]
+            );
+            console.log(`已更新workflow表中项目 ${projectCode} 的URL为: ${apiJsonUrl}`);
+        } catch (updateError) {
+            console.error('更新workflow表失败:', updateError);
+            // 不影响主流程，只记录错误
+        }
+
+        // 返回完整的记录对象
         return NextResponse.json({
             id: insertId,
             createdAt: currentTime,
