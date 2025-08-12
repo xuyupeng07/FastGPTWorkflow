@@ -4,7 +4,7 @@ import { imageStorage } from '@/lib/imageStorage';
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-    const { imageId } = body;
+    const { imageId, force = false } = body;
 
     if (!imageId) {
       return NextResponse.json(
@@ -13,29 +13,31 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 检查图片是否被使用
+    // 检查图片是否被使用（除非强制删除）
     const client = await imageStorage.getClient();
     try {
-      const usageResult = await client.query(
-        'SELECT COUNT(*) as count FROM image_usages WHERE image_id = $1',
-        [imageId]
-      );
-      const usageCount = parseInt(usageResult.rows[0].count);
-      
-      if (usageCount > 0) {
-        return NextResponse.json(
-          { error: '图片正在被使用，无法删除' },
-          { status: 400 }
+      if (!force) {
+        const usageResult = await client.query(
+          'SELECT COUNT(*) as count FROM image_usages WHERE image_id = $1',
+          [imageId]
         );
+        const usageCount = parseInt(usageResult.rows[0].count);
+        
+        if (usageCount > 0) {
+          return NextResponse.json(
+            { error: '图片正在被使用，无法删除' },
+            { status: 400 }
+          );
+        }
       }
 
-      // 删除图片
+      // 删除图片（强制删除会清理所有关联）
       const deleted = await imageStorage.deleteImage(imageId);
       
       if (deleted) {
         return NextResponse.json({
           success: true,
-          message: '图片删除成功'
+          message: force ? '图片强制删除成功' : '图片删除成功'
         });
       } else {
         return NextResponse.json(

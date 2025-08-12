@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { pool } from '@/lib/db';
+import { mysqlQuery } from '@/lib/mysql-db';
 import { 
   createSuccessResponse, 
   createErrorResponse, 
@@ -7,7 +8,7 @@ import {
   validateRequiredFields 
 } from '@/lib/api-utils';
 
-// GET /api/workflows/[id] - 获取工作流详情
+// GET /api/workflows/[id] - 获取工作流
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -15,27 +16,63 @@ export async function GET(
   try {
     const { id } = await params;
     
-    // 获取工作流基本信息
-    const workflowResult = await pool.query(`
-      SELECT 
-        w.*,
-        wc.name as category_name,
-        a.name as author_name,
-        a.avatar_url as author_avatar,
-        a.bio as author_bio
-      FROM workflows w
-      LEFT JOIN workflow_categories wc ON w.category_id = wc.id
-      LEFT JOIN authors a ON w.author_id = a.id
-      WHERE w.id = $1
-    `, [id]);
+    // 首先尝试从PostgreSQL的workflows表获取工作流信息
+    let workflow = null;
+    let workflowResult;
     
-    if (workflowResult.rows.length === 0) {
-      return createErrorResponse('工作流不存在', 404);
+    try {
+      workflowResult = await pool.query(`
+        SELECT 
+          w.*,
+          wc.name as category_name,
+          a.name as author_name,
+          a.avatar_url as author_avatar,
+          a.bio as author_bio
+        FROM workflows w
+        LEFT JOIN workflow_categories wc ON w.category_id = wc.id
+        LEFT JOIN authors a ON w.author_id = a.id
+        WHERE w.id = $1
+      `, [id]);
+      
+      if (workflowResult.rows.length > 0) {
+        workflow = workflowResult.rows[0];
+      }
+    } catch (pgError) {
+      console.log('PostgreSQL查询失败，尝试MySQL:', pgError);
     }
     
-    const workflow = workflowResult.rows[0];
-    
-    // 不再需要获取截图、说明等额外信息
+    // 如果PostgreSQL中没有找到，尝试从MySQL的workflow表获取
+    if (!workflow) {
+      try {
+        const mysqlResult = await mysqlQuery('SELECT * FROM workflow WHERE id = ?', [id]) as any[];
+        
+        if (mysqlResult.length === 0) {
+          return createErrorResponse('工作流不存在', 404);
+        }
+        
+        const mysqlWorkflow = mysqlResult[0];
+        
+        // 将MySQL数据转换为PostgreSQL格式
+        workflow = {
+          id: mysqlWorkflow.id,
+          title: mysqlWorkflow.name || '未命名工作流',
+          description: mysqlWorkflow.description,
+          project_code: mysqlWorkflow.project_code,
+          url: mysqlWorkflow.url,
+          json_source: mysqlWorkflow.workflow ? JSON.stringify(mysqlWorkflow.workflow) : null,
+          config: mysqlWorkflow.workflow,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          category_name: null,
+          author_name: null,
+          author_avatar: null,
+          author_bio: null
+        };
+      } catch (mysqlError) {
+        console.error('MySQL查询也失败:', mysqlError);
+        return createErrorResponse('工作流不存在', 404);
+      }
+    }
     
     // 组装完整的工作流数据
     const fullWorkflow = {
@@ -50,8 +87,8 @@ export async function GET(
     
     return createSuccessResponse(fullWorkflow);
   } catch (error) {
-    console.error('获取工作流详情失败:', error);
-    return createErrorResponse('获取工作流详情失败');
+    console.error('获取工作流失败:', error);
+    return createErrorResponse('获取工作流失败');
   }
 }
 
@@ -116,19 +153,57 @@ export async function DELETE(
     const { id } = await params;
 
     const result = await withTransaction(async (client) => {
-      // 不再需要删除截图、说明等额外信息
-       // workflow_requirements表不存在，跳过删除
+      // 获取工作流信息，用于删除相关短链数据
+      const workflowResult = await client.query('SELECT * FROM workflows WHERE id = $1', [id]);
+      
+      if (workflowResult.rows.length === 0) {
+        throw new Error('工作流不存在');
+      }
+      
+      const workflow = workflowResult.rows[0];
+      
+      // 删除PostgreSQL中的相关数据
       await client.query('DELETE FROM user_actions WHERE workflow_id = $1', [id]);
+      
+      // 清理图片使用记录
+      await client.query('DELETE FROM image_usages WHERE entity_type = $1 AND entity_id = $2', ['workflow', id]);
+      
+      // 删除workflow表中的记录（如果存在project_code）
+      if (workflow.id) {
+        try {
+          await client.query('DELETE FROM workflow WHERE project_code = $1', [workflow.id]);
+          console.log(`已删除workflow表中的记录: ${workflow.id}`);
+        } catch (error) {
+          console.log('workflow表中没有对应记录或删除失败:', error);
+        }
+      }
       
       // 删除工作流
       const deleteResult = await client.query('DELETE FROM workflows WHERE id = $1 RETURNING *', [id]);
       
-      if (deleteResult.rows.length === 0) {
-        throw new Error('工作流不存在');
-      }
-      
       return deleteResult.rows[0];
     });
+    
+    // 删除MySQL中的短链相关数据
+    try {
+      const mysql = require('mysql2/promise');
+      const mysqlConnection = await mysql.createConnection('mysql://root:bqsqcpp9@dbconn.sealoshzh.site:35853/datafollow');
+      
+      try {
+        // 删除link_info表中的相关记录
+        await mysqlConnection.execute('DELETE FROM link_info WHERE project_code = ?', [id]);
+        console.log(`已删除MySQL中project_code为${id}的短链记录`);
+        
+        // 删除workflow表中的相关记录
+        await mysqlConnection.execute('DELETE FROM workflow WHERE project_code = ?', [id]);
+        console.log(`已删除MySQL中project_code为${id}的workflow记录`);
+      } finally {
+        await mysqlConnection.end();
+      }
+    } catch (mysqlError) {
+      console.error('删除MySQL中的相关数据失败:', mysqlError);
+      // 不中断删除流程，只记录错误
+    }
     
     return createSuccessResponse(undefined, '工作流删除成功');
   } catch (error) {

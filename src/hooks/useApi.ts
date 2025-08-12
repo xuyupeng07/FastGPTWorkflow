@@ -98,7 +98,7 @@ export function useWorkflows(params?: {
   };
 }
 
-// 工作流详情Hook
+// 工作流Hook
 export function useWorkflow(id: string) {
   const [state, setState] = useState<ApiState<Workflow>>({
     data: null,
@@ -144,7 +144,7 @@ export function useWorkflow(id: string) {
           error: null,
         });
       } else {
-        throw new Error(response.message || '获取工作流详情失败');
+        throw new Error(response.message || '获取工作流失败');
       }
     } catch (error) {
       setState(prev => ({

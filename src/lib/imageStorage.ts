@@ -1,32 +1,12 @@
-import { Pool, PoolClient } from 'pg';
+import { PoolClient } from 'pg';
 import sharp from 'sharp';
 import { randomUUID } from 'crypto';
-
-// 数据库连接池
-let pool: Pool | undefined;
-
-function getPool(): Pool {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/?directConnection=true',
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
-  }
-  return pool;
-}
+import { pool } from './db';
 
 // 图片存储类
 class ImageStorage {
-  private pool: Pool;
-
-  constructor() {
-    this.pool = getPool();
-  }
-
   async getClient(): Promise<PoolClient> {
-    return this.pool.connect();
+    return pool.connect();
   }
 
   // 存储图片
@@ -343,13 +323,29 @@ class ImageStorage {
       }
       
       // 创建图片与实体的关联
-      await client.query(
-        `INSERT INTO image_usages (id, image_id, entity_type, entity_id, usage_type, is_primary, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, 0)
-         ON CONFLICT (entity_type, entity_id, usage_type, is_primary) 
-         DO UPDATE SET image_id = EXCLUDED.image_id, sort_order = EXCLUDED.sort_order`,
-        [usageId, imageId, entityType, entityId, usageType, isPrimary]
+      // 先尝试查找是否已存在相同的记录
+      const existingUsage = await client.query(
+        `SELECT id FROM image_usages 
+         WHERE entity_type = $1 AND entity_id = $2 AND usage_type = $3 AND is_primary = $4`,
+        [entityType, entityId, usageType, isPrimary]
       );
+      
+      if (existingUsage.rows.length > 0) {
+        // 如果存在，则更新
+        await client.query(
+          `UPDATE image_usages 
+           SET image_id = $1, sort_order = 0 
+           WHERE entity_type = $2 AND entity_id = $3 AND usage_type = $4 AND is_primary = $5`,
+          [imageId, entityType, entityId, usageType, isPrimary]
+        );
+      } else {
+        // 如果不存在，则插入
+        await client.query(
+          `INSERT INTO image_usages (id, image_id, entity_type, entity_id, usage_type, is_primary, sort_order)
+           VALUES ($1, $2, $3, $4, $5, $6, 0)`,
+          [usageId, imageId, entityType, entityId, usageType, isPrimary]
+        );
+      }
     } finally {
       client.release();
     }

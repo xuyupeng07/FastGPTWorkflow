@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { pool } from '@/lib/db';
+import { mysqlQuery } from '@/lib/mysql-db';
 import { 
   createSuccessResponse, 
   createErrorResponse, 
@@ -54,11 +55,16 @@ export async function GET(request: NextRequest) {
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
     
-    const result = await pool.query(query, params);
+    let result;
+    let workflowsWithExtras = [];
     
-    // 为每个工作流格式化数据，根据thumbnail_image_id生成正确的图片URL
-    // 对于SVG图片，直接使用原始图片以保持清晰度
-    const workflowsWithExtras = await Promise.all(result.rows.map(async workflow => {
+    // 首先尝试从PostgreSQL获取数据
+    try {
+      result = await pool.query(query, params);
+      
+      // 为每个工作流格式化数据，根据thumbnail_image_id生成正确的图片URL
+      // 对于SVG图片，直接使用原始图片以保持清晰度
+      workflowsWithExtras = await Promise.all(result.rows.map(async workflow => {
       let thumbnailUrl = '/fastgpt.svg';
       
       if (workflow.thumbnail_image_id) {
@@ -97,32 +103,96 @@ export async function GET(request: NextRequest) {
           avatar: workflow.author_avatar
         }
       };
-    }));
-    
-    // 简化的总数查询
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM workflows w
-      WHERE w.is_published = true
-    `;
-    
-    const countParams: any[] = [];
-    let countParamIndex = 1;
-    
-    if (category && category !== 'all') {
-      countQuery += ` AND w.category_id = $${countParamIndex}`;
-      countParams.push(category);
-      countParamIndex++;
-    }
-    
-    if (search) {
-      countQuery += ` AND (w.title ILIKE $${countParamIndex} OR w.description ILIKE $${countParamIndex})`;
-      countParams.push(`%${search}%`);
-      countParamIndex++;
-    }
-    
-    const countResult = await pool.query(countQuery, countParams);
-    const total = parseInt(countResult.rows[0].total);
+      }));
+      
+      // 简化的总数查询
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM workflows w
+        WHERE w.is_published = true
+      `;
+      
+      const countParams: any[] = [];
+      let countParamIndex = 1;
+      
+      if (category && category !== 'all') {
+        countQuery += ` AND w.category_id = $${countParamIndex}`;
+        countParams.push(category);
+        countParamIndex++;
+      }
+      
+      if (search) {
+        countQuery += ` AND (w.title ILIKE $${countParamIndex} OR w.description ILIKE $${countParamIndex})`;
+        countParams.push(`%${search}%`);
+        countParamIndex++;
+      }
+      
+      const countResult = await pool.query(countQuery, countParams);
+       var total = parseInt(countResult.rows[0].total);
+       
+     } catch (pgError) {
+       console.log('PostgreSQL查询失败，尝试MySQL:', pgError);
+       
+       // 如果PostgreSQL失败，尝试从MySQL获取数据
+       try {
+         let mysqlQuery_str = 'SELECT * FROM workflow';
+         const mysqlParams: any[] = [];
+         
+         // 构建MySQL查询条件
+         const conditions: string[] = [];
+         
+         if (search) {
+           conditions.push('(name LIKE ? OR description LIKE ?)');
+           mysqlParams.push(`%${search}%`, `%${search}%`);
+         }
+         
+         if (conditions.length > 0) {
+           mysqlQuery_str += ' WHERE ' + conditions.join(' AND ');
+         }
+         
+         mysqlQuery_str += ' ORDER BY id DESC';
+         mysqlQuery_str += ` LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+         
+         const mysqlResult = await mysqlQuery(mysqlQuery_str, mysqlParams) as any[];
+         
+         // 转换MySQL数据格式
+         workflowsWithExtras = mysqlResult.map(workflow => ({
+           id: workflow.id,
+           title: workflow.name || '未命名工作流',
+           description: workflow.description,
+           project_code: workflow.project_code,
+           url: workflow.url,
+           json_source: workflow.workflow ? JSON.stringify(workflow.workflow) : null,
+           config: workflow.workflow,
+           created_at: new Date().toISOString(),
+           updated_at: new Date().toISOString(),
+           thumbnail: '/fastgpt.svg',
+           author: {
+             name: null,
+             avatar: null
+           },
+           category_name: null,
+           author_name: null,
+           author_avatar: null
+         }));
+         
+         // 获取总数
+         let countQuery_mysql = 'SELECT COUNT(*) as total FROM workflow';
+         const countParams_mysql: any[] = [];
+         
+         if (search) {
+           countQuery_mysql += ' WHERE (name LIKE ? OR description LIKE ?)';
+           countParams_mysql.push(`%${search}%`, `%${search}%`);
+         }
+         
+         const countResult_mysql = await mysqlQuery(countQuery_mysql, countParams_mysql) as any[];
+         total = parseInt(countResult_mysql[0].total);
+         
+       } catch (mysqlError) {
+         console.error('MySQL查询也失败:', mysqlError);
+         return createErrorResponse('获取工作流列表失败');
+       }
+     }
     
     return createSuccessResponse(
       workflowsWithExtras,

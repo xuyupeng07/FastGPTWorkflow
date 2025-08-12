@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AdminLogin from '@/components/AdminLogin';
 import { getApiUrl } from '@/lib/config';
+import LinkManagement from '@/components/LinkManagement';
 
 interface Workflow {
   id: string;
@@ -56,6 +57,18 @@ interface Author {
   website_url?: string;
   github_url?: string;
   is_verified: boolean;
+}
+
+interface SourceType {
+  id: number;
+  name: string;
+  name_en: string;
+}
+
+interface Platform {
+  id: number;
+  name: string;
+  abbreviation: string;
 }
 
 
@@ -128,8 +141,15 @@ function AdminContent() {
     demo_url: '',
     is_featured: false,
     is_published: true,
-    json_source: ''
+    json_source: '',
+    source_type: 'FastAgent',
+    platform: 'FastAgent'
   });
+  
+  // urlgeneration相关状态
+  const [sourceTypes, setSourceTypes] = useState<{id: number, sourcetype: string, en: string}[]>([]);
+  const [platforms, setPlatforms] = useState<{id: number, platform: string, abbreviation: string}[]>([]);
+  const [generatingDemoUrl, setGeneratingDemoUrl] = useState(false);
   
   // 添加本地图片预览状态
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -201,11 +221,110 @@ function AdminContent() {
 
       if (categoriesData.success) setCategories(categoriesData.data);
       if (authorsData.success) setAuthors(authorsData.data);
+      
+      // 获取来源类型和平台数据
+      try {
+        const [sourceTypesRes, platformsRes] = await Promise.all([
+          fetch('/api/sourcetypes'),
+          fetch('/api/platforms')
+        ]);
+        
+        if (sourceTypesRes.ok) {
+          const sourceTypesData = await sourceTypesRes.json();
+          if (sourceTypesData.success) {
+            setSourceTypes(sourceTypesData.sourceTypes);
+          }
+        }
+        
+        if (platformsRes.ok) {
+          const platformsData = await platformsRes.json();
+          if (platformsData.success) {
+            setPlatforms(platformsData.platforms);
+          }
+        }
+      } catch (error) {
+        console.error('获取urlgeneration数据失败:', error);
+      }
     } catch (_error) {
       console.error('获取数据失败:', _error);
       toast.error('获取数据失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 生成演示链接
+  const generateDemoUrl = async () => {
+    if (!formData.title || !formData.json_source || !formData.source_type || !formData.platform) {
+      toast.error('请先填写工作流标题、JSON源码、来源类型和平台');
+      return;
+    }
+
+    setGeneratingDemoUrl(true);
+    try {
+      // 1. 先在urlgeneration中创建项目
+      const projectResponse = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectCode: formData.title,
+          projectDescription: formData.description,
+          workflow: JSON.parse(formData.json_source)
+        }),
+      });
+
+      const projectResult = await projectResponse.json();
+      if (!projectResult.success) {
+        // 如果是工作流名称已存在的错误，不抛出异常，继续执行
+        if (projectResult.message && projectResult.message.includes('已存在')) {
+          console.log('项目已存在，继续生成短链:', projectResult.message);
+          // 需要获取现有项目的URL
+          const existingProjectResponse = await fetch('/api/projects');
+          const existingProjects = await existingProjectResponse.json();
+          if (existingProjects.success) {
+            const existingProject = existingProjects.projects.find((p: any) => p.project_code === formData.title);
+            if (existingProject && existingProject.url) {
+              projectResult.url = existingProject.url;
+              projectResult.success = true;
+            } else {
+              throw new Error('无法获取现有项目的URL');
+            }
+          } else {
+            throw new Error('无法获取现有项目信息');
+          }
+        } else {
+          throw new Error(projectResult.message || '创建项目失败');
+        }
+      }
+
+      // 2. 生成短链
+      const linkResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sourceType: formData.source_type,
+          platform: formData.platform,
+          projectCode: formData.title,
+          workflow_url: projectResult.url
+        }),
+      });
+
+      const linkResult = await linkResponse.json();
+      if (linkResult.shortUrl) {
+        setFormData({ ...formData, demo_url: linkResult.shortUrl });
+        toast.success('演示链接生成成功！');
+      } else {
+        throw new Error('生成短链失败');
+      }
+    } catch (error: any) {
+      console.error('生成演示链接失败:', error);
+      toast.error(error.message || '生成演示链接失败');
+    } finally {
+      setGeneratingDemoUrl(false);
     }
   };
 
@@ -336,22 +455,21 @@ function AdminContent() {
 
       const result = await response.json();
       if (result.success) {
-        // 如果工作流删除成功，且有缩略图，则解除图片关联
+        // 如果工作流删除成功，且有缩略图，则强制删除图片
         if (thumbnailImageId) {
           try {
-            await fetch(`/api/images/unlink`, {
-              method: 'POST',
+            await fetch(`/api/images/delete`, {
+              method: 'DELETE',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                entityType: 'workflow',
-                entityId: id,
-                usageType: 'logo'
+                imageId: thumbnailImageId,
+                force: true  // 强制删除，确保图片被真正删除
               }),
             });
           } catch (error) {
-            console.warn('解除图片关联失败:', error);
+            console.warn('删除图片失败:', error);
           }
         }
         
@@ -377,7 +495,9 @@ function AdminContent() {
       demo_url: '',
       is_featured: false,
       is_published: true,
-      json_source: ''
+      json_source: '',
+      source_type: 'FastAgent',
+      platform: 'FastAgent'
     });
     setPreviewImage(null); // 清除预览图片
   };
@@ -483,15 +603,14 @@ function AdminContent() {
     if (!imageId) return;
     
     try {
-      const entityId = editingWorkflow?.id || `temp-${Date.now()}`;
-      
-      const response = await fetch(`/api/images/unlink`, {
+      // 对于新建工作流场景，我们希望强制删除图片
+      // 因为用户明确点击了删除按钮
+      const response = await fetch(`/api/images/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          entityType: 'workflow',
-          entityId: entityId,
-          usageType: 'thumbnail'
+          imageId: imageId,
+          force: true  // 强制删除，即使图片正在被使用
         })
       });
 
@@ -500,9 +619,10 @@ function AdminContent() {
         throw new Error(errorData.error || '删除失败');
       }
 
+      const result = await response.json();
       // 清空表单中的缩略图ID
       setFormData(prev => ({ ...prev, thumbnail_image_id: '' }));
-      toast.success('图片删除成功');
+      toast.success(result.message || '图片删除成功');
     } catch (error) {
       console.error('删除图片失败:', error);
       if (error instanceof Error) {
@@ -527,7 +647,9 @@ function AdminContent() {
       demo_url: workflow.demo_url || '',
       is_featured: workflow.is_featured,
       is_published: workflow.is_published,
-      json_source: workflow.json_source || ''
+      json_source: workflow.json_source || '',
+      source_type: '',
+      platform: ''
     });
     setIsEditDialogOpen(true);
   };
@@ -798,6 +920,7 @@ function AdminContent() {
           <TabsTrigger value="workflows" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">工作流管理</TabsTrigger>
           <TabsTrigger value="categories" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">分类管理</TabsTrigger>
           <TabsTrigger value="authors" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">作者管理</TabsTrigger>
+          <TabsTrigger value="links" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">链接管理</TabsTrigger>
           <TabsTrigger value="stats" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">统计信息</TabsTrigger>
         </TabsList>
 
@@ -919,6 +1042,40 @@ function AdminContent() {
                         </div>
                       </div>
 
+                      {/* 演示链接生成相关字段 */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="source_type">来源类型</Label>
+                          <Select value={formData.source_type} onValueChange={(value) => setFormData({ ...formData, source_type: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择来源类型" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {sourceTypes.map((sourceType: any) => (
+                                <SelectItem key={sourceType.id} value={sourceType.name}>
+                                  {sourceType.name} ({sourceType.name_en})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="platform">媒体平台</Label>
+                          <Select value={formData.platform} onValueChange={(value) => setFormData({ ...formData, platform: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择媒体平台" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {platforms.map((platform: any) => (
+                                <SelectItem key={platform.id} value={platform.name}>
+                                  {platform.name} ({platform.abbreviation})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
                       <div>
                         <Label htmlFor="thumbnail_image_id">工作流Logo</Label>
                         <div className="space-y-3">
@@ -995,12 +1152,23 @@ function AdminContent() {
                       </div>
                       <div>
                         <Label htmlFor="demo_url">演示URL</Label>
-                        <Input
-                          id="demo_url"
-                          value={formData.demo_url}
-                          onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
-                          placeholder="演示链接（可选）"
-                        />
+                        <div className="flex space-x-2">
+                          <Input
+                            id="demo_url"
+                            value={formData.demo_url}
+                            onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
+                            placeholder="演示链接（可选）"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            onClick={generateDemoUrl}
+                            disabled={generatingDemoUrl || !formData.title || !formData.json_source || !formData.source_type || !formData.platform}
+                            variant="outline"
+                          >
+                            {generatingDemoUrl ? '生成中...' : '自动生成'}
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="flex items-center space-x-4">
@@ -1311,6 +1479,10 @@ function AdminContent() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="links" className="space-y-6">
+          <LinkManagement />
         </TabsContent>
 
         <TabsContent value="stats">

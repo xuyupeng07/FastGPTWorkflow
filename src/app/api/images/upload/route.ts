@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { imageStorage } from '@/lib/imageStorage';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 设置超时处理
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<NextResponse>((_, reject) => {
       setTimeout(() => reject(new Error('请求超时')), 30000);
     });
 
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       });
     })();
 
-    return Promise.race([uploadPromise, timeoutPromise]);
+    return Promise.race([uploadPromise, timeoutPromise]) as Promise<NextResponse>;
 
   } catch (error) {
     console.error('图片上传失败:', error);
