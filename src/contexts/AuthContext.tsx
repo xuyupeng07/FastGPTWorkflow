@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   login: (credentials: { username: string; password: string }) => Promise<boolean>;
   register: (credentials: { username: string; password: string; inviteCode: string }) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -220,7 +220,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       // 调用注销API
       if (authToken) {
@@ -232,19 +232,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
       }
       
-      // 清除本地存储
+      // 清除本地存储 - 确保操作完成
       setAuthToken('');
       setUserData('');
+      
+      // 等待一小段时间确保localStorage操作完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // 验证localStorage确实被清空
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const remainingToken = window.localStorage.getItem('auth_token');
+        const remainingUserData = window.localStorage.getItem('user_data');
+        
+        if (remainingToken || remainingUserData) {
+          console.warn('localStorage未完全清空，强制清除');
+          try {
+            window.localStorage.removeItem('auth_token');
+            window.localStorage.removeItem('user_data');
+            // 同时清除sessionStorage备份
+            if (window.sessionStorage) {
+              window.sessionStorage.removeItem('backup_auth_token');
+              window.sessionStorage.removeItem('backup_user_data');
+            }
+          } catch (e) {
+            console.error('强制清除localStorage失败:', e);
+          }
+        }
+      }
+      
+      // 更新React状态
       setIsAuthenticated(false);
       setUser(null);
       
       // 重置初始化标志
       hasInitialized.current = false;
+      
+      console.log('登出完成，所有状态已清除');
     } catch (error) {
       console.error('登出失败:', error);
       // 即使API调用失败，也要清除本地状态
       setAuthToken('');
       setUserData('');
+      
+      // 强制清除localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          window.localStorage.removeItem('auth_token');
+          window.localStorage.removeItem('user_data');
+          if (window.sessionStorage) {
+            window.sessionStorage.removeItem('backup_auth_token');
+            window.sessionStorage.removeItem('backup_user_data');
+          }
+        } catch (e) {
+          console.error('强制清除localStorage失败:', e);
+        }
+      }
+      
       setIsAuthenticated(false);
       setUser(null);
       
