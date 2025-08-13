@@ -1,16 +1,26 @@
 import { Pool } from 'pg';
 
-// 数据库连接配置
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/?directConnection=true';
+// 数据库连接配置 - 必须从环境变量读取
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
 
-// 数据库schema配置 - 通过环境变量控制
-const DB_SCHEMA = process.env.DB_SCHEMA || 'publiccopy';
-const FALLBACK_SCHEMA = process.env.DB_FALLBACK_SCHEMA || 'public';
+// 数据库schema配置 - 必须从环境变量读取
+const DB_SCHEMA = process.env.DB_SCHEMA;
+if (!DB_SCHEMA) {
+  throw new Error('DB_SCHEMA environment variable is required');
+}
+const FALLBACK_SCHEMA = process.env.DB_FALLBACK_SCHEMA;
 
 // 构建search_path
 const getSearchPath = () => {
   if (DB_SCHEMA === 'public') {
     return 'public';
+  }
+  // 如果没有设置FALLBACK_SCHEMA，只使用主schema
+  if (!FALLBACK_SCHEMA) {
+    return DB_SCHEMA;
   }
   return `${DB_SCHEMA}, ${FALLBACK_SCHEMA}`;
 };
@@ -24,10 +34,10 @@ class DatabasePool {
       DatabasePool.instance = new Pool({
         connectionString: DATABASE_URL,
         ssl: false,
-        max: parseInt(process.env.DB_MAX_CONNECTIONS || '10'),
-        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
-        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000'),
-        query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '30000'),
+        max: parseInt(process.env.DB_MAX_CONNECTIONS!),
+        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT!),
+        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT!),
+        query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT!),
       });
       
       const searchPath = getSearchPath();
@@ -48,7 +58,7 @@ class DatabasePool {
         // 设置search_path
         await client.query(`SET search_path TO ${searchPath}`);
         console.log(`✅ 已设置数据库schema为: ${searchPath}`);
-        console.log(`📋 当前schema配置: DB_SCHEMA=${DB_SCHEMA}, FALLBACK_SCHEMA=${FALLBACK_SCHEMA}`);
+        console.log(`📋 当前schema配置: DB_SCHEMA=${DB_SCHEMA}, FALLBACK_SCHEMA=${FALLBACK_SCHEMA || '(未设置)'}`);
         client.release();
         
         // 数据库表结构已清理，不需要额外的结构检查

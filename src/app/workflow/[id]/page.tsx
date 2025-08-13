@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useWorkflow, useUserActions } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { getApiBaseUrl } from '@/lib/config';
 
@@ -36,6 +37,7 @@ export default function WorkflowDetailPage() {
   const workflowId = params.id as string;
   const { data: workflow, loading, error, refetch } = useWorkflow(workflowId);
   const { recordAction, loading: actionLoading } = useUserActions();
+  const { isAuthenticated } = useAuth();
   const [isExperiencing] = useState(false);
   const [showJsonViewer, setShowJsonViewer] = useState(false);
   const [showExperience, setShowExperience] = useState(false);
@@ -257,24 +259,27 @@ export default function WorkflowDetailPage() {
                   
                   {/* 操作按钮 */}
                   <div className="flex flex-wrap gap-3">
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={(e) => handleCopyJson(e)}
-                      className="px-6"
-                    >
-                      {copySuccess ? (
-                         <>
-                           <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                           复制成功
-                         </>
-                       ) : (
-                         <>
-                           <Copy className="w-4 h-4 mr-2" />
-                           复制 JSON
-                         </>
-                       )}
-                    </Button>
+                    {/* 只有在登录状态下才显示复制按钮 */}
+                    {isAuthenticated && (
+                      <Button 
+                        type="button"
+                        variant="outline"
+                        onClick={(e) => handleCopyJson(e)}
+                        className="px-6"
+                      >
+                        {copySuccess ? (
+                           <>
+                             <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                             复制成功
+                           </>
+                         ) : (
+                           <>
+                             <Copy className="w-4 h-4 mr-2" />
+                             复制 JSON
+                           </>
+                         )}
+                      </Button>
+                    )}
                     
                     <Button 
                       type="button"

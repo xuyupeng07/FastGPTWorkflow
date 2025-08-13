@@ -59,11 +59,22 @@ pnpm install
 # 复制环境变量模板
 cp .env.example .env.local
 
-# 编辑 .env.local 文件，配置数据库连接
-# DATABASE_URL=postgresql://username:password@host:port/database
+# 编辑 .env.local 文件，配置数据库连接和schema
+# DATABASE_URL=postgresql://username:password@host:port/database?directConnection=true
+# DB_SCHEMA=workflow                    # 主要使用的schema
+# DB_FALLBACK_SCHEMA=public            # 备用schema（可选）
 ```
 
-4. **启动开发服务器**
+4. **初始化数据库**
+```bash
+# 运行数据库初始化脚本
+node scripts/create-fastagent-database.js
+node scripts/create-workflow-schemas.js
+node scripts/init-users-table.js
+node scripts/init-admin-user.js
+```
+
+5. **启动开发服务器**
 ```bash
 pnpm run dev      # 启动开发服务器 (http://localhost:3000)
 ```
@@ -137,6 +148,12 @@ pnpm run lint         # ESLint 代码检查
 # 依赖管理
 pnpm install          # 安装依赖
 pnpm update           # 更新依赖
+
+# 数据库初始化脚本
+node scripts/create-fastagent-database.js    # 创建数据库
+node scripts/create-workflow-schemas.js      # 创建工作流schema
+node scripts/init-users-table.js            # 初始化用户表
+node scripts/init-admin-user.js             # 创建管理员用户
 ```
 
 ## 🌐 访问地址
@@ -202,9 +219,12 @@ pnpm update           # 更新依赖
 2. 在 [Vercel](https://vercel.com) 中导入项目
 3. 配置环境变量:
    - `DATABASE_URL`: PostgreSQL 数据库连接字符串
+   - `DB_SCHEMA`: 主要使用的schema (如: `workflow`)
+   - `DB_FALLBACK_SCHEMA`: 备用schema (可选，如: `public`)
    - 格式: `postgresql://username:password@host:port/database?directConnection=true`
    - 示例: `postgresql://postgres:password@localhost:5432/fastgpt_workflow`
-4. 点击部署即可
+4. 运行数据库初始化脚本
+5. 点击部署即可
 
 > 💡 建议使用 Supabase、PlanetScale 或 Neon 等云数据库服务
 
@@ -218,6 +238,24 @@ pnpm run build
 pnpm run start
 ```
 
+## 🗄️ 数据库Schema配置
+
+项目支持多schema架构，可以灵活配置数据库schema：
+
+- **DB_SCHEMA**: 主要使用的schema，所有数据操作优先在此schema中进行
+- **DB_FALLBACK_SCHEMA**: 备用schema（可选），当主schema中找不到表时会查找备用schema
+
+### Schema切换说明
+
+详细的schema配置和切换说明请参考 [SCHEMA_SWITCHING.md](SCHEMA_SWITCHING.md)
+
+### 可用的初始化脚本
+
+- `create-fastagent-database.js`: 创建FastAgent数据库
+- `create-workflow-schemas.js`: 创建workflow和workflow2 schema并复制数据
+- `init-users-table.js`: 初始化用户表
+- `init-admin-user.js`: 创建管理员用户
+
 ## ❓ 常见问题
 
 ### Q: 如何添加新的工作流？
@@ -227,7 +265,10 @@ A: 访问 `/admin` 页面，使用管理员功能添加工作流。或者通过 
 A: 请确保 JSON 格式符合 FastGPT 的工作流配置标准，包含完整的节点和连接信息。
 
 ### Q: 如何配置数据库？
-A: 项目支持 PostgreSQL 数据库，在 `.env.local` 中配置 `DATABASE_URL` 即可。
+A: 项目支持 PostgreSQL 数据库，在 `.env.local` 中配置 `DATABASE_URL`、`DB_SCHEMA` 和 `DB_FALLBACK_SCHEMA`。
+
+### Q: 如何切换数据库schema？
+A: 修改 `.env.local` 中的 `DB_SCHEMA` 环境变量，重启应用即可。详见 [SCHEMA_SWITCHING.md](SCHEMA_SWITCHING.md)。
 
 ### Q: 支持哪些文件上传格式？
 A: 支持常见的图片格式 (PNG, JPG, SVG) 作为工作流缩略图。
