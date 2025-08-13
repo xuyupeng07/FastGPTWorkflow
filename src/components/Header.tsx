@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Search, Star, LogIn, User, LogOut, UserPlus } from 'lucide-react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { HeaderBackground } from './HeaderBackground';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -169,17 +170,25 @@ export function Header({ onSearch }: HeaderProps) {
           
           <ClientOnlyWrapper fallback={
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                asChild
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+              <Tooltip 
+                content="登录后可快速体验所有工作流案例"
+                side="bottom"
+                align="center"
+                delayDuration={100}
+                className="bg-gray-900 text-white border-gray-700 text-xs"
               >
-                <Link href="/login">
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline text-sm">登录</span>
-                </Link>
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  asChild
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                >
+                  <Link href="/login">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline text-sm">登录</span>
+                  </Link>
+                </Button>
+              </Tooltip>
 
             </div>
           }>
@@ -198,17 +207,25 @@ export function Header({ onSearch }: HeaderProps) {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  asChild
-                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                <Tooltip 
+                  content="登录后可快速体验所有工作流案例"
+                  side="bottom"
+                  align="center"
+                  delayDuration={100}
+                  className="bg-gray-900 text-white border-gray-700 text-xs"
                 >
-                  <Link href="/login">
-                    <LogIn className="w-4 h-4" />
-                    <span className="hidden sm:inline text-sm">登录</span>
-                  </Link>
-                </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    asChild
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                  >
+                    <Link href="/login">
+                      <LogIn className="w-4 h-4" />
+                      <span className="hidden sm:inline text-sm">登录</span>
+                    </Link>
+                  </Button>
+                </Tooltip>
 
               </div>
             )}

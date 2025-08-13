@@ -123,7 +123,7 @@ export function WorkflowExperience({ workflow, isOpen, onClose }: WorkflowExperi
                   <div>
                     <h3 className="text-base font-medium text-gray-700 mb-1">暂无体验链接</h3>
                     <p className="text-gray-500 text-sm max-w-sm">
-                      该工作流暂时没有配置体验链接，请联系管理员添加演示URL或免登录链接。
+                      该工作流暂时没有配置体验链接，请联系管理员添加登录跳转短链或免登录链接。
                     </p>
                   </div>
                 </div>

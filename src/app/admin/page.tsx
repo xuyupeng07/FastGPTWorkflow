@@ -257,7 +257,7 @@ function AdminContent() {
     }
   };
 
-  // 生成演示链接
+  // 生成登录跳转短链
   const generateDemoUrl = async () => {
     if (!formData.title || !formData.source_type || !formData.platform) {
       toast.error('请先填写工作流标题、来源类型和平台');
@@ -370,8 +370,8 @@ function AdminContent() {
         throw new Error('生成短链失败');
       }
     } catch (error: any) {
-      console.error('生成演示链接失败:', error);
-      toast.error(error.message || '生成演示链接失败');
+      console.error('生成登录跳转短链失败:', error);
+      toast.error(error.message || '生成登录跳转短链失败');
     } finally {
       setGeneratingDemoUrl(false);
     }
@@ -1116,7 +1116,7 @@ function AdminContent() {
                         </div>
                       </div>
 
-                      {/* 演示链接生成相关字段 */}
+                      {/* 登录跳转短链生成相关字段 */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="source_type">来源类型</Label>
@@ -1225,13 +1225,13 @@ function AdminContent() {
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="demo_url">演示URL</Label>
+                        <Label htmlFor="demo_url">登录跳转短链</Label>
                         <div className="flex space-x-2">
                           <Input
                             id="demo_url"
                             value={formData.demo_url}
                             onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
-                            placeholder="演示链接（可选）"
+                            placeholder="登录跳转短链（可选）"
                             className="flex-1"
                           />
                           <Button
@@ -1680,7 +1680,7 @@ function AdminContent() {
               </div>
             </div>
 
-            {/* 演示链接生成相关字段 */}
+            {/* 登录跳转短链生成相关字段 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-source-type">来源类型</Label>
@@ -1782,13 +1782,13 @@ function AdminContent() {
               </div>
             </div>
             <div>
-              <Label htmlFor="edit-demo-url">演示URL</Label>
+              <Label htmlFor="edit-demo-url">登录跳转短链</Label>
               <div className="flex gap-2">
                 <Input
                   id="edit-demo-url"
                   value={formData.demo_url}
                   onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })}
-                  placeholder="演示链接（可选）"
+                  placeholder="登录跳转短链（可选）"
                 />
                 <Button
                   type="button"

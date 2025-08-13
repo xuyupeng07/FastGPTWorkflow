@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Workflow } from '@/lib/types';
-import { WorkflowExperience } from '@/components/WorkflowExperience';
+
+import { LikeAnimation } from '@/components/LikeAnimation';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
 import { Users, Heart, CheckCircle, Loader2 } from 'lucide-react';
@@ -27,7 +28,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   const [isClient, setIsClient] = useState(false);
   const { isAuthenticated } = useAuth();
   
-  const [showExperience, setShowExperience] = useState(false);
+
   const [copySuccess, setCopySuccess] = useState(false);
   const [copying, setCopying] = useState(false);
   const [cachedConfig, setCachedConfig] = useState<string | null>(null);
@@ -36,6 +37,8 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   const [liking, setLiking] = useState(false);
   const [userSessionId, setUserSessionId] = useState<string>('');
   const [usageCount, setUsageCount] = useState(workflow.usageCount || 0);
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const [hasJsonConfig, setHasJsonConfig] = useState<boolean | null>(null);
   
   // 初始化客户端状态
   useEffect(() => {
@@ -50,6 +53,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     }
     
     if (copying || !isClient) return; // 防止重复点击和确保在客户端
+    
+    // 检查是否有JSON配置
+    if (hasJsonConfig === false) {
+      toast.error('该工作流没有配置JSON');
+      return;
+    }
     
     try {
       setCopying(true);
@@ -158,7 +167,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     } finally {
       setCopying(false);
     }
-  }, [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId]), [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId]);
+  }, [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId, hasJsonConfig]), [copying, isClient, cachedConfig, workflow.json_source, workflow.id, userSessionId, hasJsonConfig]);
 
   const handleTryWorkflow = useSafeEventHandler(useCallback((e: React.MouseEvent) => {
     // 阻止事件冒泡和默认行为，防止页面刷新
@@ -167,9 +176,16 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     
     if (!isClient) return; // 确保在客户端
     
-    // 未登录用户：直接在新窗口打开demo_url
-    if (!isAuthenticated && workflow.demo_url) {
-      window.open(workflow.demo_url, '_blank');
+    // 根据登录状态选择不同的URL
+    let targetUrl = null;
+    if (isAuthenticated && workflow.no_login_url) {
+      targetUrl = workflow.no_login_url;
+    } else if (!isAuthenticated && workflow.demo_url) {
+      targetUrl = workflow.demo_url;
+    }
+    
+    if (targetUrl) {
+      window.open(targetUrl, '_blank');
       
       // 记录try行为
       if (userSessionId) {
@@ -181,25 +197,8 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
             console.error('记录try行为失败:', _error);
           });
       }
-      return;
     }
-    
-    // 登录用户：打开iframe体验弹窗
-    setShowExperience(true);
-    
-    // 记录try行为
-    if (userSessionId) {
-      // 异步记录行为，不阻塞UI
-      recordUserAction('try')
-        .then(() => {
-          // API调用成功后，更新使用数量
-          setUsageCount(prev => prev + 1);
-        })
-        .catch((_error) => {
-          console.error('记录try行为失败:', _error);
-        });
-    }
-  }, [isClient, userSessionId, workflow.id, workflow.demo_url]), [isClient, userSessionId, workflow.id, workflow.demo_url]);
+  }, [isClient, isAuthenticated, userSessionId, workflow.id, workflow.demo_url, workflow.no_login_url]), [isClient, isAuthenticated, userSessionId, workflow.id, workflow.demo_url, workflow.no_login_url]);
 
 
 
@@ -232,7 +231,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     }
   }, [workflow.id, userSessionId]);
 
-  // 本地缓存管理
+  // 本地缓存管理 - 永久保存点赞状态
   const getCachedLikeStatus = useCallback((workflowId: string | number, sessionId: string) => {
     if (!isClient) return null;
     try {
@@ -240,17 +239,50 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const data = JSON.parse(cached);
-        // 缓存有效期1小时
-        const now = new Date().getTime();
-        if (now - data.timestamp < 3600000) {
-          return { liked: data.liked, likeCount: data.likeCount };
+        // 如果缓存中显示已点赞，直接返回点赞状态
+        if (data.liked) {
+          return { liked: true, likeCount: data.likeCount };
         }
+        return { liked: data.liked, likeCount: data.likeCount };
       }
     } catch (_error) {
       console.error('获取点赞状态失败:', _error);
     }
     return null;
   }, [isClient]);
+
+  // 检测工作流是否有可用的JSON配置
+  const checkJsonConfig = useCallback(async () => {
+    try {
+      // 首先检查本地是否有json_source
+      if (workflow.json_source) {
+        setHasJsonConfig(true);
+        return;
+      }
+      
+      // 如果没有本地json_source，检查API是否有配置数据
+      const API_BASE_URL = getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/workflows/${workflow.id}`);
+      
+      if (!response.ok) {
+        setHasJsonConfig(false);
+        return;
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // 检查是否有json_source或config
+        const hasConfig = !!(result.data.json_source || result.data.config);
+        setHasJsonConfig(hasConfig);
+      } else {
+        setHasJsonConfig(false);
+      }
+    } catch (error) {
+      console.error('检测JSON配置失败:', error);
+      setHasJsonConfig(false);
+    }
+  }, [workflow.id, workflow.json_source]);
 
   const setCachedLikeStatus = useCallback((workflowId: string | number, sessionId: string, liked: boolean, likeCount: number) => {
     if (!isClient) return;
@@ -323,15 +355,19 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     
     // 先从本地缓存获取点赞状态
     const cachedLikeStatus = getCachedLikeStatus(workflow.id, sessionId);
-    if (cachedLikeStatus) {
-      setLiked(cachedLikeStatus.liked);
+    if (cachedLikeStatus && cachedLikeStatus.liked) {
+      // 如果缓存显示已点赞，直接设置状态
+      setLiked(true);
       setLikeCount(cachedLikeStatus.likeCount);
+    } else {
+      // 获取最新状态
+      if (sessionId) {
+        fetchLikeStatus(sessionId);
+      }
     }
     
-    // 然后异步获取最新状态
-    if (sessionId) {
-      fetchLikeStatus(sessionId);
-    }
+    // 检测JSON配置
+    checkJsonConfig();
     
     // 清理函数
     return () => {
@@ -342,7 +378,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
         clearTimeout(handleLikeRef.current);
       }
     };
-  }, [isClient, workflow.id, getCachedLikeStatus, fetchLikeStatus]);
+  }, [isClient, workflow.id, getCachedLikeStatus, fetchLikeStatus, checkJsonConfig]);
 
 
 
@@ -352,7 +388,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   const handleLikeRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleLike = useSafeEventHandler(useCallback(async () => {
-    if (liking || !isClient || !userSessionId || liked) return;
+    if (liking || !isClient || !userSessionId) return;
     
     // 防抖处理，防止重复点击
     if (handleLikeRef.current) {
@@ -360,11 +396,14 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     }
     
     // 乐观更新：立即更新UI
-    const originalLiked = liked;
     const originalLikeCount = likeCount;
-    setLiked(true);
+    setLiked(true); // 点赞后爱心保持红色
     setLikeCount(prev => prev + 1);
     setLiking(true);
+    
+    // 触发点赞动画
+    setShowLikeAnimation(true);
+    setTimeout(() => setShowLikeAnimation(false), 1000);
     
     // 立即更新缓存
     setCachedLikeStatus(workflow.id, userSessionId, true, likeCount + 1);
@@ -389,21 +428,14 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
         if (result.success) {
           // 成功，保持乐观更新的状态
           setCachedLikeStatus(workflow.id, userSessionId, true, likeCount + 1);
-        } else if (result.code === 'ALREADY_LIKED') {
-          // 用户已经点赞过，保持点赞状态
-          setCachedLikeStatus(workflow.id, userSessionId, true, likeCount + 1);
         } else {
-          // 失败，回滚状态
-          setLiked(originalLiked);
+          // 失败，回滚点赞数量但保持爱心红色
           setLikeCount(originalLikeCount);
-          setCachedLikeStatus(workflow.id, userSessionId, originalLiked, originalLikeCount);
           console.error('点赞失败:', result.error);
         }
       } catch (_error) {
-          // 网络错误，回滚状态
-          setLiked(originalLiked);
+          // 网络错误，回滚点赞数量但保持爱心红色
           setLikeCount(originalLikeCount);
-          setCachedLikeStatus(workflow.id, userSessionId, originalLiked, originalLikeCount);
           console.error('点赞请求失败:', _error);
       } finally {
         setLiking(false);
@@ -516,26 +548,34 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
               <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               <span className="font-medium">{usageCount > 999 ? `${Math.floor(usageCount/1000)}k` : usageCount}</span>
             </span>
-            <button 
-              onClick={handleLike}
-              disabled={liking}
-              className={`flex items-center gap-1 transition-colors hover:text-red-500 ${
-                liked ? 'text-red-500' : 'text-gray-500'
-              } ${liking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <Heart 
-                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-all ${
-                  liked ? 'fill-current' : ''
-                } ${liking ? 'animate-pulse' : ''}`} 
+            <div className="relative">
+              <button 
+                onClick={handleLike}
+                disabled={liking}
+                className={`flex items-center gap-1 transition-colors hover:text-red-500 ${
+                  liked ? 'text-red-500' : 'text-gray-500'
+                } ${liking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <Heart 
+                  className={`w-2.5 h-2.5 sm:w-3 sm:h-3 transition-all ${
+                    liked ? 'fill-current' : ''
+                  } ${liking ? 'animate-pulse' : ''}`} 
+                />
+                <span className="font-medium">{likeCount}</span>
+              </button>
+              
+              {/* 点赞动画 */}
+              <LikeAnimation
+                isTriggered={showLikeAnimation}
+                onComplete={() => setShowLikeAnimation(false)}
               />
-              <span className="font-medium">{likeCount}</span>
-            </button>
+            </div>
           </div>
 
           {/* 操作按钮 */}
           <div className="flex gap-1 sm:gap-1.5">
             <Tooltip 
-              content="复制工作流配置JSON"
+              content={hasJsonConfig === false ? "该工作流没有配置JSON" : "复制工作流配置JSON"}
               side="bottom"
               align="center"
               className="text-xs bg-gray-900 text-white border-gray-700"
@@ -545,11 +585,13 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                 size="sm"
                 variant="outline"
                 onClick={handleCopyJson}
-                disabled={copying}
+                disabled={copying || hasJsonConfig === false}
                 className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
-                  copying ? 'opacity-70 cursor-not-allowed' : ''
+                  copying || hasJsonConfig === false ? 'opacity-50 cursor-not-allowed' : ''
                 } ${
                   copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
+                } ${
+                  hasJsonConfig === false ? 'bg-gray-100 text-gray-400' : ''
                 }`}
               >
                 {copying ? (
@@ -568,7 +610,15 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
               </Button>
             </Tooltip>
             <Tooltip 
-               content={isAuthenticated ? "跳转至工作流免登录窗口" : "跳转至FastGPT并自动填充工作流"}
+               content={
+                 (isAuthenticated && !workflow.no_login_url) 
+                   ? "该工作流暂未配置体验链接，请联系管理员配置" 
+                   : (!isAuthenticated && !workflow.demo_url)
+                     ? "该工作流暂未配置跳转链接，登录后开放使用"
+                     : isAuthenticated 
+                       ? "跳转至工作流免登录窗口" 
+                       : "跳转至FastGPT并自动填充工作流"
+               }
                side="bottom"
                align="center"
                className="text-xs bg-gray-900 text-white border-gray-700"
@@ -577,8 +627,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                  type="button"
                  size="sm"
                  onClick={handleTryWorkflow}
-                 className="bg-gray-900 hover:bg-gray-800 text-white border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6"
-                 disabled={!workflow.demo_url && !workflow.no_login_url}
+                 className={`border-0 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
+                   (isAuthenticated && !workflow.no_login_url) || (!isAuthenticated && !workflow.demo_url)
+                     ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                     : 'bg-gray-900 hover:bg-gray-800 text-white'
+                 }`}
+                 disabled={(isAuthenticated && !workflow.no_login_url) || (!isAuthenticated && !workflow.demo_url)}
                >
                  Try
                </Button>
@@ -588,12 +642,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       </Card>
     </motion.div>
     
-    {/* 体验弹窗 */}
-    <WorkflowExperience
-      workflow={workflow}
-      isOpen={showExperience}
-      onClose={() => setShowExperience(false)}
-    />
-    </ClientOnlyWrapper>
+
+      </ClientOnlyWrapper>
   );
 }

@@ -22,15 +22,7 @@ export async function POST(
       return createErrorResponse('工作流不存在', 404);
     }
     
-    // 检查用户是否已经点赞
-    const existingLike = await pool.query(`
-      SELECT id FROM user_actions 
-      WHERE workflow_id = $1 AND user_session_id = $2 AND action_type = 'like'
-    `, [id, user_session_id]);
-    
-    if (existingLike.rows.length > 0) {
-      return createErrorResponse('您已经点赞过这个工作流', 400);
-    }
+    // 移除点赞限制，允许用户无限点赞
     
     // 开始事务
     const client = await pool.connect();
