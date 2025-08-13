@@ -73,6 +73,19 @@ interface Platform {
   abbreviation: string;
 }
 
+interface User {
+  id: number;
+  username: string;
+  email?: string;
+  role: 'admin' | 'user';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
+  login_attempts: number;
+  locked_until?: string;
+}
+
 
 
 const API_BASE_URL = getApiUrl();
@@ -83,6 +96,7 @@ function AdminContent() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -94,9 +108,32 @@ function AdminContent() {
   const [activeTab, setActiveTab] = useState('workflows');
   const [uploading, setUploading] = useState(false);
   
+  // 用户管理相关状态
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
+  
+  // 用户分页状态
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const [userPageSize] = useState(20);
+  const [userTotal, setUserTotal] = useState(0);
+  
+  // 用户表单数据
+  const [userFormData, setUserFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'user' as 'admin' | 'user',
+    is_active: true
+  });
 
   
   // 防抖搜索
@@ -249,11 +286,205 @@ function AdminContent() {
       } catch (error) {
         console.error('获取urlgeneration数据失败:', error);
       }
+      
+      // 获取用户数据
+      try {
+        const usersRes = await fetch('/api/admin/users');
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          if (usersData.success) {
+            setUsers(usersData.data.users);
+            setUserTotal(usersData.data.total);
+          }
+        }
+      } catch (error) {
+        console.error('获取用户数据失败:', error);
+      }
     } catch (_error) {
       console.error('获取数据失败:', _error);
       toast.error('获取数据失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 用户管理相关函数
+  const fetchUsers = async () => {
+    try {
+      const params = new URLSearchParams({
+        page: userCurrentPage.toString(),
+        limit: userPageSize.toString(),
+        ...(userSearchTerm && { search: userSearchTerm }),
+        ...(selectedRole && selectedRole !== 'all' && { role: selectedRole }),
+        ...(selectedStatus && selectedStatus !== 'all' && { status: selectedStatus })
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/admin/users?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setUsers(data.data.users);
+          setUserTotal(data.data.total);
+        }
+      }
+    } catch (error) {
+      console.error('获取用户列表失败:', error);
+      toast.error('获取用户列表失败');
+    }
+  };
+
+  const handleCreateUser = async () => {
+    // 表单验证
+    if (!userFormData.username.trim()) {
+      toast.error('请输入用户名');
+      return;
+    }
+    if (!userFormData.email.trim()) {
+      toast.error('请输入邮箱');
+      return;
+    }
+    if (!userFormData.password.trim()) {
+      toast.error('请输入密码');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userFormData),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        toast.success('用户创建成功');
+        setIsCreateUserDialogOpen(false);
+        setUserFormData({
+          username: '',
+          email: '',
+          password: '',
+          role: 'user',
+          is_active: true
+        });
+        fetchUsers();
+      } else {
+        toast.error(data.message || '创建用户失败');
+      }
+    } catch (error) {
+      console.error('创建用户失败:', error);
+      toast.error('创建用户失败');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserFormData({
+      username: user.username,
+      email: user.email || '',
+      password: '',
+      role: user.role,
+      is_active: user.is_active
+    });
+    setIsEditUserDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+    
+    try {
+      const updateData = {
+        username: userFormData.username,
+        email: userFormData.email,
+        role: userFormData.role,
+        is_active: userFormData.is_active,
+        ...(userFormData.password && { password: userFormData.password })
+      };
+      
+      const response = await fetch(`${API_BASE_URL}/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        toast.success('用户更新成功');
+        setIsEditUserDialogOpen(false);
+        setEditingUser(null);
+        setUserFormData({
+          username: '',
+          email: '',
+          password: '',
+          role: 'user',
+          is_active: true
+        });
+        fetchUsers();
+      } else {
+        toast.error(data.message || '更新用户失败');
+      }
+    } catch (error) {
+      console.error('更新用户失败:', error);
+      toast.error('更新用户失败');
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        toast.success('用户删除成功');
+        fetchUsers();
+      } else {
+        toast.error(data.message || '删除用户失败');
+      }
+    } catch (error) {
+      console.error('删除用户失败:', error);
+      toast.error('删除用户失败');
+    }
+  };
+
+  const handleBatchUpdateUsers = async (action: 'activate' | 'deactivate' | 'unlock') => {
+    if (selectedUsers.length === 0) {
+      toast.error('请选择要操作的用户');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          userIds: selectedUsers
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        const actionText = {
+          activate: '激活',
+          deactivate: '禁用',
+          unlock: '解锁'
+        }[action];
+        toast.success(`用户${actionText}成功`);
+        setSelectedUsers([]);
+        fetchUsers();
+      } else {
+        toast.error(data.message || '批量操作失败');
+      }
+    } catch (error) {
+      console.error('批量操作失败:', error);
+      toast.error('批量操作失败');
     }
   };
 
@@ -994,6 +1225,7 @@ function AdminContent() {
           <TabsTrigger value="workflows" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">工作流管理</TabsTrigger>
           <TabsTrigger value="categories" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">分类管理</TabsTrigger>
           <TabsTrigger value="authors" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">作者管理</TabsTrigger>
+          <TabsTrigger value="users" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">用户管理</TabsTrigger>
           <TabsTrigger value="links" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">链接管理</TabsTrigger>
           <TabsTrigger value="stats" className="rounded-md px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900 data-[state=inactive]:hover:bg-white/70 data-[state=inactive]:hover:scale-105 data-[state=inactive]:hover:shadow-sm">统计信息</TabsTrigger>
         </TabsList>
@@ -1565,6 +1797,228 @@ function AdminContent() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="users" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>用户管理</CardTitle>
+                <CardDescription>管理系统用户</CardDescription>
+              </div>
+              <Button onClick={() => {
+                setUserFormData({
+                  username: '',
+                  email: '',
+                  password: '',
+                  role: 'user',
+                  is_active: true
+                });
+                setIsCreateUserDialogOpen(true);
+              }} className="bg-black text-white hover:bg-gray-800">
+                <Plus className="w-4 h-4 mr-2" />
+                新建用户
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {/* 搜索和筛选 */}
+              <div className="flex flex-col lg:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="搜索用户名或邮箱..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedRole} onValueChange={setSelectedRole}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="角色" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">全部角色</SelectItem>
+                      <SelectItem value="admin">管理员</SelectItem>
+                      <SelectItem value="user">普通用户</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="状态" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="active">激活</SelectItem>
+                      <SelectItem value="inactive">禁用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={fetchUsers} variant="outline">
+                    <Filter className="w-4 h-4 mr-2" />
+                    筛选
+                  </Button>
+                </div>
+              </div>
+
+              {/* 批量操作 */}
+              {selectedUsers.length > 0 && (
+                <div className="flex gap-2 mb-4 p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm text-blue-700">已选择 {selectedUsers.length} 个用户</span>
+                  <div className="flex gap-2 ml-auto">
+                    <Button size="sm" onClick={() => handleBatchUpdateUsers('activate')} className="bg-green-600 hover:bg-green-700">
+                      批量激活
+                    </Button>
+                    <Button size="sm" onClick={() => handleBatchUpdateUsers('deactivate')} className="bg-red-600 hover:bg-red-700">
+                      批量禁用
+                    </Button>
+                    <Button size="sm" onClick={() => handleBatchUpdateUsers('unlock')} className="bg-blue-600 hover:bg-blue-700">
+                      批量解锁
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 用户表格 */}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.length === users.length && users.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUsers(users.map(u => u.id));
+                            } else {
+                              setSelectedUsers([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>用户名</TableHead>
+                      <TableHead>邮箱</TableHead>
+                      <TableHead>角色</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>创建时间</TableHead>
+                      <TableHead>最后登录</TableHead>
+                      <TableHead>操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUsers([...selectedUsers, user.id]);
+                              } else {
+                                setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{user.username}</TableCell>
+                        <TableCell>{user.email || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                            {user.role === 'admin' ? '管理员' : '普通用户'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={user.is_active ? 'default' : 'destructive'}>
+                              {user.is_active ? '激活' : '禁用'}
+                            </Badge>
+                            {user.locked_until && new Date(user.locked_until) > new Date() && (
+                              <Badge variant="destructive" className="text-xs">
+                                <Lock className="w-3 h-3 mr-1" />
+                                已锁定
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {new Date(user.created_at).toLocaleDateString('zh-CN')}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {user.last_login ? new Date(user.last_login).toLocaleDateString('zh-CN') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                confirm({
+                                  title: '删除用户',
+                                  description: `确定要删除用户 "${user.username}" 吗？此操作无法撤销。`,
+                                  variant: 'destructive',
+                                  confirmText: '删除',
+                                  onConfirm: () => handleDeleteUser(user.id)
+                                });
+                              }}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 分页 */}
+              {userTotal > userPageSize && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-gray-500">
+                    共 {userTotal} 个用户
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUserCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={userCurrentPage === 1}
+                    >
+                      上一页
+                    </Button>
+                    <span className="text-sm">
+                      第 {userCurrentPage} 页，共 {Math.ceil(userTotal / userPageSize)} 页
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setUserCurrentPage(prev => Math.min(prev + 1, Math.ceil(userTotal / userPageSize)))}
+                      disabled={userCurrentPage === Math.ceil(userTotal / userPageSize)}
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {users.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  没有找到匹配的用户
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="links" className="space-y-6">
           <LinkManagement />
         </TabsContent>
@@ -1848,7 +2302,163 @@ function AdminContent() {
         </DialogContent>
       </Dialog>
 
+      {/* 创建用户对话框 */}
+      <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>创建新用户</DialogTitle>
+            <DialogDescription>
+              添加一个新的系统用户
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="user-username">用户名</Label>
+              <Input
+                id="user-username"
+                value={userFormData.username}
+                onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                placeholder="请输入用户名"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-email">邮箱</Label>
+              <Input
+                id="user-email"
+                type="email"
+                value={userFormData.email}
+                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                placeholder="请输入邮箱地址"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-password">密码</Label>
+              <Input
+                id="user-password"
+                type="password"
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                placeholder="请输入密码"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-role">角色</Label>
+              <Select value={userFormData.role} onValueChange={(value: 'admin' | 'user') => setUserFormData({ ...userFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择用户角色" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="user">普通用户</SelectItem>
+                  <SelectItem value="admin">管理员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="user-active"
+                checked={userFormData.is_active}
+                onChange={(e) => setUserFormData({ ...userFormData, is_active: e.target.checked })}
+              />
+              <Label htmlFor="user-active">激活用户</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateUserDialogOpen(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              取消
+            </Button>
+            <Button 
+              onClick={handleCreateUser}
+              className="bg-black text-white hover:bg-gray-800"
+            >
+              创建
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      {/* 编辑用户对话框 */}
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>编辑用户</DialogTitle>
+            <DialogDescription>
+              修改用户信息
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label htmlFor="edit-user-username">用户名</Label>
+              <Input
+                id="edit-user-username"
+                value={userFormData.username}
+                onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                placeholder="请输入用户名"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-user-email">邮箱</Label>
+              <Input
+                id="edit-user-email"
+                type="email"
+                value={userFormData.email}
+                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                placeholder="请输入邮箱地址"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-user-password">密码</Label>
+              <Input
+                id="edit-user-password"
+                type="password"
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                placeholder="留空则不修改密码"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-user-role">角色</Label>
+              <Select value={userFormData.role} onValueChange={(value: 'admin' | 'user') => setUserFormData({ ...userFormData, role: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择用户角色" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="user">普通用户</SelectItem>
+                  <SelectItem value="admin">管理员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-user-active"
+                checked={userFormData.is_active}
+                onChange={(e) => setUserFormData({ ...userFormData, is_active: e.target.checked })}
+              />
+              <Label htmlFor="edit-user-active">激活用户</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditUserDialogOpen(false)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              取消
+            </Button>
+            <Button 
+              onClick={handleUpdateUser}
+              className="bg-black text-white hover:bg-gray-800"
+            >
+              更新
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 创建分类对话框 */}
       <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
@@ -1962,7 +2572,7 @@ export default function AdminPage() {
 }
 
 function AdminPageWithAuth() {
-  const { isAuthenticated, login, loading } = useAuth();
+  const { isAuthenticated, user, login, loading } = useAuth();
 
   if (loading) {
     return (
@@ -1995,6 +2605,46 @@ function AdminPageWithAuth() {
 
   if (!isAuthenticated) {
     return <AdminLogin onLogin={login} />;
+  }
+
+  // 检查用户角色，只有管理员才能访问
+  if (user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <Lock className="mx-auto h-12 w-12 text-red-400" />
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              访问被拒绝
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              你不是管理员，无法访问此页面
+            </p>
+          </div>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <div className="text-lg text-red-600 font-medium">
+                  权限不足
+                </div>
+                <p className="text-gray-600">
+                  当前用户：{user?.username}<br/>
+                  用户角色：{user?.role}<br/>
+                  需要角色：管理员
+                </p>
+                <Button 
+                  onClick={() => window.location.href = '/'}
+                  className="w-full"
+                >
+                  返回首页
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return <AdminContent />;
