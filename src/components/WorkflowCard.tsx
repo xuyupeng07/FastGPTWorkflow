@@ -54,6 +54,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     
     if (copying || !isClient) return; // 防止重复点击和确保在客户端
     
+    // 检查登录状态
+    if (!isAuthenticated) {
+      toast.error('请先登录后再使用复制功能');
+      return;
+    }
+    
     // 检查是否有JSON配置
     if (hasJsonConfig === false) {
       toast.error('该工作流没有配置JSON');
@@ -546,7 +552,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
           <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500">
             <span className="flex items-center gap-0.5 sm:gap-1">
               <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              <span className="font-medium">{usageCount > 999 ? `${Math.floor(usageCount/1000)}k` : usageCount}</span>
+              <span className="font-medium">{usageCount > 999 ? `${Math.floor(usageCount/1000)}k` : (usageCount || 0)}</span>
             </span>
             <div className="relative">
               <button 
@@ -561,7 +567,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                     liked ? 'fill-current' : ''
                   } ${liking ? 'animate-pulse' : ''}`} 
                 />
-                <span className="font-medium">{likeCount}</span>
+                <span className="font-medium">{likeCount || 0}</span>
               </button>
               
               {/* 点赞动画 */}
@@ -574,53 +580,57 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
 
           {/* 操作按钮 */}
           <div className="flex gap-1 sm:gap-1.5">
-            {/* 只有在登录状态下才显示复制按钮 */}
-            {isAuthenticated && (
-              <Tooltip 
-                content={hasJsonConfig === false ? "该工作流没有配置JSON" : "复制工作流配置JSON"}
-                side="bottom"
-                align="center"
-                className="text-xs bg-gray-900 text-white border-gray-700"
+            {/* 复制按钮 - 未登录时禁用并提示 */}
+            <Tooltip 
+              content={
+                !isAuthenticated 
+                  ? "登录后可复制工作流源码" 
+                  : hasJsonConfig === false 
+                    ? "该工作流没有配置源码，请联系管理员获取" 
+                    : "复制源码"
+              }
+              side="bottom"
+              align="center"
+              className="text-xs bg-gray-900 text-white border-gray-700"
+            >
+              <Button 
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCopyJson}
+                disabled={!isAuthenticated || copying || hasJsonConfig === false}
+                className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
+                  !isAuthenticated || copying || hasJsonConfig === false ? 'opacity-50 cursor-not-allowed' : ''
+                } ${
+                  copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
+                } ${
+                  hasJsonConfig === false || !isAuthenticated ? 'bg-gray-100 text-gray-400' : ''
+                }`}
               >
-                <Button 
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCopyJson}
-                  disabled={copying || hasJsonConfig === false}
-                  className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
-                    copying || hasJsonConfig === false ? 'opacity-50 cursor-not-allowed' : ''
-                  } ${
-                    copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
-                  } ${
-                    hasJsonConfig === false ? 'bg-gray-100 text-gray-400' : ''
-                  }`}
-                >
-                  {copying ? (
-                    <>
-                      <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
-                      复制中...
-                    </>
-                  ) : copySuccess ? (
-                    <>
-                      <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
-                      已复制
-                    </>
-                  ) : (
-                    <>                  Copy                </>
-                  )}
-                </Button>
-              </Tooltip>
-            )}
+                {copying ? (
+                  <>
+                    <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
+                    复制中...
+                  </>
+                ) : copySuccess ? (
+                  <>
+                    <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
+                    已复制
+                  </>
+                ) : (
+                  <>                  Copy                </>
+                )}
+              </Button>
+            </Tooltip>
             <Tooltip 
                content={
                  (isAuthenticated && !workflow.no_login_url) 
-                   ? "该工作流暂未配置体验链接，请联系管理员配置" 
+                   ? "该工作流暂未配置体验链接，请联系管理员获取" 
                    : (!isAuthenticated && !workflow.demo_url)
-                     ? "该工作流暂未配置跳转链接，登录后开放使用"
+                     ? "登录后可快速体验该工作流"
                      : isAuthenticated 
-                       ? "跳转至工作流免登录窗口" 
-                       : "跳转至FastGPT并自动填充工作流"
+                       ? "快速体验" 
+                       : "跳转至FastGPT登录页，扫码登录后系统将自动创建该工作流"
                }
                side="bottom"
                align="center"

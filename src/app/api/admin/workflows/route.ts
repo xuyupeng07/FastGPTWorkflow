@@ -160,33 +160,46 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('缺少必填字段', 400);
     }
 
-    // 生成唯一ID
-    const id = title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+    // 转换数据类型
+    const categoryIdInt = parseInt(category_id);
+    const authorIdInt = parseInt(author_id);
+    
+    if (isNaN(categoryIdInt) || isNaN(authorIdInt)) {
+      return createErrorResponse('分类ID或作者ID格式错误', 400);
+    }
+
+    // 插入工作流数据，让数据库自动生成 ID 和时间戳
+    const result = await pool.query(`
+      INSERT INTO workflows (
+        title, description, category_id, author_id,
+        json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published,
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING *
+    `, [
+      title, description, categoryIdInt, authorIdInt,
+      json_source, thumbnail_image_id || null, demo_url, no_login_url, is_featured, is_published
+    ]);
+
+    const workflowId = result.rows[0].id;
 
     // 如果有图片ID，建立关联
     if (thumbnail_image_id) {
       try {
-        await imageStorage.linkImageToEntity(thumbnail_image_id, 'workflow', id, { usageType: 'logo', isPrimary: true });
+        await imageStorage.linkImageToEntity(thumbnail_image_id, 'workflow', workflowId, { usageType: 'logo', isPrimary: true });
       } catch (error) {
         console.error('建立图片关联失败:', error);
         // 不中断创建流程，只是记录错误
       }
     }
 
-    const result = await pool.query(`
-      INSERT INTO workflows (
-        id, title, description, category_id, author_id,
-        json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `, [
-      id, title, description, category_id, author_id,
-      json_source, thumbnail_image_id || null, demo_url, no_login_url, is_featured, is_published
-    ]);
-
     return createSuccessResponse(result.rows[0], '工作流创建成功');
   } catch (error) {
-    console.error('创建工作流失败:', error);
-    return createErrorResponse('创建工作流失败');
+    console.error('=== 创建工作流失败 ===');
+    console.error('错误详情:', error);
+    console.error('错误消息:', error instanceof Error ? error.message : '未知错误');
+    console.error('错误堆栈:', error instanceof Error ? error.stack : '无堆栈信息');
+    console.error('========================');
+    return createErrorResponse('创建工作流失败: ' + (error instanceof Error ? error.message : '未知错误'));
   }
 }

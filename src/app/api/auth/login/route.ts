@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           message: '请求数据格式错误',
-          errors: validationResult.error.errors
+          errors: validationResult.error.issues
         },
         { status: 400 }
       );
@@ -83,21 +83,21 @@ export async function POST(request: NextRequest) {
     console.error('登录API错误:', error);
     
     // 处理特定的错误类型
-    if (error.message.includes('锁定')) {
+    if (error.message === '账号已被禁用，请联系管理员') {
       return NextResponse.json(
         {
           success: false,
-          message: error.message
+          message: '账号已被禁用，请联系管理员'
         },
-        { status: 423 } // 423 Locked
+        { status: 403 }
       );
     }
     
-    if (error.message.includes('禁用')) {
+    if (error.message === '账户已被禁用') {
       return NextResponse.json(
         {
           success: false,
-          message: '账户已被禁用'
+          message: '账号已被禁用，请联系管理员'
         },
         { status: 403 }
       );

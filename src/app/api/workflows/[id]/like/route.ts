@@ -17,7 +17,7 @@ export async function POST(
     }
     
     // 检查工作流是否存在
-    const workflowCheck = await pool.query('SELECT id FROM workflows WHERE id = $1', [id]);
+    const workflowCheck = await pool.query('SELECT id FROM workflows WHERE id = $1', [parseInt(id)]);
     if (workflowCheck.rows.length === 0) {
       return createErrorResponse('工作流不存在', 404);
     }
@@ -38,10 +38,10 @@ export async function POST(
       // 更新工作流点赞数
       const result = await client.query(`
         UPDATE workflows 
-        SET like_count = like_count + 1 
+        SET like_count = COALESCE(like_count, 0) + 1 
         WHERE id = $1 
         RETURNING like_count
-      `, [id]);
+      `, [parseInt(id)]);
       
       await client.query('COMMIT');
       
@@ -99,10 +99,10 @@ export async function DELETE(
       // 更新工作流点赞数
       const result = await client.query(`
         UPDATE workflows 
-        SET like_count = GREATEST(like_count - 1, 0) 
+        SET like_count = GREATEST(COALESCE(like_count, 0) - 1, 0) 
         WHERE id = $1 
         RETURNING like_count
-      `, [id]);
+      `, [parseInt(id)]);
       
       await client.query('COMMIT');
       

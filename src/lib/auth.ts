@@ -166,7 +166,7 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
     
     // 检查用户是否被锁定
     if (userRecord.locked_until && new Date(userRecord.locked_until) > new Date()) {
-      throw new Error('账户已被锁定，请稍后再试');
+      throw new Error('账号已被禁用，请联系管理员');
     }
     
     // 检查用户是否激活
@@ -193,7 +193,7 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
       );
       
       if (lockedUntil) {
-        throw new Error('登录失败次数过多，账户已被锁定30分钟');
+        throw new Error('账号已被禁用，请联系管理员');
       }
       
       return null;

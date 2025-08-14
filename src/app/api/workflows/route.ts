@@ -232,17 +232,24 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('缺少必填字段', 400);
     }
 
-    // 生成唯一ID
-    const id = title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+    // 转换数据类型
+    const categoryIdInt = parseInt(category_id);
+    const authorIdInt = parseInt(author_id);
+    
+    if (isNaN(categoryIdInt) || isNaN(authorIdInt)) {
+      return createErrorResponse('分类ID或作者ID格式错误', 400);
+    }
 
+    // 让数据库自动生成 ID
     const result = await pool.query(`
       INSERT INTO workflows (
-        id, title, description, category_id, author_id,
-        json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        title, description, category_id, author_id,
+        json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published,
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `, [
-      id, title, description, category_id, author_id,
+      title, description, categoryIdInt, authorIdInt,
       json_source, thumbnail_image_id, demo_url, no_login_url, is_featured, is_published
     ]);
 

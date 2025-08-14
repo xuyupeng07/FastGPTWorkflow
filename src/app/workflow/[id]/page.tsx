@@ -29,6 +29,7 @@ import {
 import Link from 'next/link';
 import { useWorkflow, useUserActions } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 import { getApiBaseUrl } from '@/lib/config';
 
@@ -127,6 +128,12 @@ export default function WorkflowDetailPage() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // 检查登录状态
+    if (!isAuthenticated) {
+      toast.error('请先登录后再使用复制功能');
+      return;
     }
     
     if (!workflow || !isClient) return;
@@ -241,7 +248,7 @@ export default function WorkflowDetailPage() {
                   <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 mb-6">
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      <span>{workflow.usageCount.toLocaleString()} 次使用</span>
+                      <span>{(workflow.usageCount || 0).toLocaleString()} 次使用</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Heart className="w-4 h-4" />
@@ -259,27 +266,27 @@ export default function WorkflowDetailPage() {
                   
                   {/* 操作按钮 */}
                   <div className="flex flex-wrap gap-3">
-                    {/* 只有在登录状态下才显示复制按钮 */}
-                    {isAuthenticated && (
-                      <Button 
-                        type="button"
-                        variant="outline"
-                        onClick={(e) => handleCopyJson(e)}
-                        className="px-6"
-                      >
-                        {copySuccess ? (
-                           <>
-                             <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                             复制成功
-                           </>
-                         ) : (
-                           <>
-                             <Copy className="w-4 h-4 mr-2" />
-                             复制 JSON
-                           </>
-                         )}
-                      </Button>
-                    )}
+                    {/* 复制按钮 - 未登录时禁用并提示 */}
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={(e) => handleCopyJson(e)}
+                      disabled={!isAuthenticated}
+                      className={`px-6 ${!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={!isAuthenticated ? '登录后开放复制功能' : ''}
+                    >
+                      {copySuccess ? (
+                         <>
+                           <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                           复制成功
+                         </>
+                       ) : (
+                         <>
+                           <Copy className="w-4 h-4 mr-2" />
+                           复制 JSON
+                         </>
+                       )}
+                    </Button>
                     
                     <Button 
                       type="button"

@@ -20,7 +20,7 @@ export async function GET(
       LEFT JOIN workflows w ON wc.id = w.category_id
       WHERE wc.id = $1
       GROUP BY wc.id
-    `, [id]);
+    `, [parseInt(id)]);
     
     if (result.rows.length === 0) {
       return createErrorResponse('分类不存在', 404);
@@ -50,7 +50,7 @@ export async function PUT(
     // 检查分类名称是否已存在（排除当前分类）
     const existingCategory = await pool.query(
       'SELECT id FROM workflow_categories WHERE name = $1 AND id != $2',
-      [name, id]
+      [name, parseInt(id)]
     );
 
     if (existingCategory.rows.length > 0) {
@@ -65,7 +65,7 @@ export async function PUT(
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
-    `, [id, name, description]);
+    `, [parseInt(id), name, description]);
 
     if (result.rows.length === 0) {
       return createErrorResponse('分类不存在', 404);
@@ -89,7 +89,7 @@ export async function DELETE(
     // 检查是否有工作流使用此分类
     const workflowCount = await pool.query(
       'SELECT COUNT(*) as count FROM workflows WHERE category_id = $1',
-      [id]
+      [parseInt(id)]
     );
 
     if (parseInt(workflowCount.rows[0].count) > 0) {
@@ -99,7 +99,7 @@ export async function DELETE(
     // 删除分类
     const result = await pool.query(
       'DELETE FROM workflow_categories WHERE id = $1 RETURNING *',
-      [id]
+      [parseInt(id)]
     );
 
     if (result.rows.length === 0) {

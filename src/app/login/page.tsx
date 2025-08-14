@@ -48,12 +48,12 @@ export default function LoginPage() {
     }
 
     try {
-      const success = await login(credentials);
-      if (success) {
+      const result = await login(credentials);
+      if (result.success) {
         toast.success('登录成功！');
         router.push('/');
       } else {
-        toast.error('用户名或密码错误');
+        toast.error(result.message || '用户名或密码错误');
       }
     } catch (error) {
       console.error('登录失败:', error);

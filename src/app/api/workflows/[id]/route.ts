@@ -32,7 +32,7 @@ export async function GET(
         LEFT JOIN workflow_categories wc ON w.category_id = wc.id
         LEFT JOIN authors a ON w.author_id = a.id
         WHERE w.id = $1
-      `, [id]);
+      `, [parseInt(id)]);
       
       if (workflowResult.rows.length > 0) {
         workflow = workflowResult.rows[0];
@@ -127,7 +127,9 @@ export async function PUT(
       WHERE id = $1
       RETURNING *
     `, [
-      id, title, description, author_id, category_id,
+      parseInt(id), title, description, 
+      author_id ? parseInt(author_id) : null, 
+      category_id ? parseInt(category_id) : null,
        demo_url,
        config ? JSON.stringify(config) : null,
        thumbnail_image_id, is_featured, is_published
@@ -154,7 +156,7 @@ export async function DELETE(
 
     const result = await withTransaction(async (client) => {
       // 获取工作流信息，用于删除相关短链数据
-      const workflowResult = await client.query('SELECT * FROM workflows WHERE id = $1', [id]);
+      const workflowResult = await client.query('SELECT * FROM workflows WHERE id = $1', [parseInt(id)]);
       
       if (workflowResult.rows.length === 0) {
         throw new Error('工作流不存在');
@@ -166,20 +168,12 @@ export async function DELETE(
       await client.query('DELETE FROM user_actions WHERE workflow_id = $1', [id]);
       
       // 清理图片使用记录
-      await client.query('DELETE FROM image_usages WHERE entity_type = $1 AND entity_id = $2', ['workflow', id]);
+      await client.query('DELETE FROM image_usages WHERE entity_type = $1 AND entity_id = $2', ['workflow', parseInt(id)]);
       
-      // 删除workflow表中的记录（如果存在project_code）
-      if (workflow.id) {
-        try {
-          await client.query('DELETE FROM workflow WHERE project_code = $1', [workflow.id]);
-          console.log(`已删除workflow表中的记录: ${workflow.id}`);
-        } catch (error) {
-          console.log('workflow表中没有对应记录或删除失败:', error);
-        }
-      }
+      // 注释：workflow表不存在，移除相关删除操作
       
       // 删除工作流
-      const deleteResult = await client.query('DELETE FROM workflows WHERE id = $1 RETURNING *', [id]);
+      const deleteResult = await client.query('DELETE FROM workflows WHERE id = $1 RETURNING *', [parseInt(id)]);
       
       return deleteResult.rows[0];
     });

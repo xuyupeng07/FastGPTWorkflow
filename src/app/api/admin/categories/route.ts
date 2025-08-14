@@ -102,15 +102,12 @@ export async function POST(request: NextRequest) {
     );
     const nextSortOrder = maxSortOrderResult.rows[0].next_sort_order;
     
-    // 生成唯一ID
-    const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
-    
-    // 创建分类，使用自增的sort_order
+    // 创建分类，让数据库自动生成 ID
     const result = await pool.query(`
-      INSERT INTO workflow_categories (id, name, description, sort_order)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO workflow_categories (name, description, sort_order, created_at, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [id, name, description, nextSortOrder]);
+    `, [name, description, nextSortOrder]);
 
     return createSuccessResponse(result.rows[0], '分类创建成功');
   } catch (error) {

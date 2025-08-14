@@ -134,6 +134,34 @@ function AdminContent() {
     role: 'user' as 'admin' | 'user',
     is_active: true
   });
+  
+  // 邮箱验证状态
+  const [emailError, setEmailError] = useState('');
+  // 密码验证状态
+  const [passwordError, setPasswordError] = useState('');
+  
+  // 邮箱格式验证函数
+  const validateEmail = (email: string) => {
+    if (!email.trim()) {
+      return '';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return '请输入有效的邮箱格式';
+    }
+    return '';
+  };
+  
+  // 密码验证函数
+  const validatePassword = (password: string) => {
+    if (!password.trim()) {
+      return '';
+    }
+    if (password.length < 6) {
+      return '密码长度至少6个字符';
+    }
+    return '';
+  };
 
   
   // 防抖搜索
@@ -343,8 +371,23 @@ function AdminContent() {
       toast.error('请输入邮箱');
       return;
     }
+    
+    // 验证邮箱格式
+    const emailValidationError = validateEmail(userFormData.email);
+    if (emailValidationError) {
+      setEmailError(emailValidationError);
+      return;
+    }
+    
     if (!userFormData.password.trim()) {
       toast.error('请输入密码');
+      return;
+    }
+    
+    // 验证密码长度
+    const passwordValidationError = validatePassword(userFormData.password);
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
       return;
     }
     
@@ -368,13 +411,17 @@ function AdminContent() {
           role: 'user',
           is_active: true
         });
+        setEmailError('');
+        setPasswordError('');
         fetchUsers();
       } else {
-        toast.error(data.message || '创建用户失败');
+        // 显示后端返回的详细错误信息
+        const errorMessage = data.error || data.message || '创建用户失败';
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('创建用户失败:', error);
-      toast.error('创建用户失败');
+      toast.error('网络错误，请稍后重试');
     }
   };
 
@@ -387,11 +434,30 @@ function AdminContent() {
       role: user.role,
       is_active: user.is_active
     });
+    setEmailError(''); // 清除邮箱错误状态
     setIsEditUserDialogOpen(true);
   };
 
   const handleUpdateUser = async () => {
     if (!editingUser) return;
+    
+    // 验证邮箱格式
+    if (userFormData.email.trim()) {
+      const emailValidationError = validateEmail(userFormData.email);
+      if (emailValidationError) {
+        setEmailError(emailValidationError);
+        return;
+      }
+    }
+    
+    // 验证密码长度（如果提供了密码）
+    if (userFormData.password.trim()) {
+      const passwordValidationError = validatePassword(userFormData.password);
+      if (passwordValidationError) {
+        setPasswordError(passwordValidationError);
+        return;
+      }
+    }
     
     try {
       const updateData = {
@@ -422,13 +488,16 @@ function AdminContent() {
           role: 'user',
           is_active: true
         });
+        setEmailError('');
         fetchUsers();
       } else {
-        toast.error(data.message || '更新用户失败');
+        // 显示后端返回的详细错误信息
+        const errorMessage = data.error || data.message || '更新用户失败';
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('更新用户失败:', error);
-      toast.error('更新用户失败');
+      toast.error('网络错误，请稍后重试');
     }
   };
 
@@ -650,9 +719,35 @@ function AdminContent() {
       const result = await response.json();
       
       if (result.success) {
+        // 如果有临时图片，确认图片关联
+        if (formData.thumbnail_image_id) {
+          try {
+            const confirmResponse = await fetch('/api/images/confirm', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                imageId: formData.thumbnail_image_id,
+                entityType: 'workflow',
+                entityId: result.data.id,
+                usageType: 'thumbnail',
+                isPrimary: true
+              }),
+            });
+            
+            const confirmResult = await confirmResponse.json();
+            if (!confirmResult.success) {
+              console.warn('图片确认失败:', confirmResult.error);
+            }
+          } catch (error) {
+            console.warn('图片确认失败:', error);
+          }
+        }
+        
         toast.success('工作流创建成功');
         setIsCreateDialogOpen(false);
-        resetForm();
+        await resetForm();
         fetchData();
       } else {
         toast.error(result.error || '创建失败');
@@ -703,7 +798,7 @@ function AdminContent() {
         toast.success('工作流更新成功');
         setIsEditDialogOpen(false);
         setEditingWorkflow(null);
-        resetForm();
+        await resetForm();
         fetchData();
       } else {
         toast.error(result.error || '更新失败');
@@ -775,8 +870,26 @@ function AdminContent() {
     }
   };
 
+  // 清理临时图片
+  const cleanupTempImage = async (imageId: string) => {
+    if (!imageId) return;
+    
+    try {
+      await fetch(`/api/images/temp-upload?imageId=${imageId}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.warn('清理临时图片失败:', error);
+    }
+  };
+
   // 重置表单
-  const resetForm = () => {
+  const resetForm = async () => {
+    // 如果有临时图片，先清理
+    if (formData.thumbnail_image_id) {
+      await cleanupTempImage(formData.thumbnail_image_id);
+    }
+    
     setFormData({
       title: '',
       description: '',
@@ -831,10 +944,6 @@ function AdminContent() {
     try {
       const formData = new FormData();
       formData.append('image', file); // API期望的字段名是'image'
-      formData.append('entityType', 'workflow');
-      formData.append('entityId', editingWorkflow?.id || 'temp-create-workflow');
-      formData.append('usageType', 'thumbnail');
-      formData.append('isPrimary', 'true');
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
@@ -845,7 +954,7 @@ function AdminContent() {
       // 添加上传进度提示
       toast.info('正在上传图片，请稍候...');
 
-      const response = await fetch(`/api/images/upload`, {
+      const response = await fetch(`/api/images/temp-upload`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -866,9 +975,9 @@ function AdminContent() {
 
       const result = await response.json();
       if (result.success) {
-        setFormData(prev => ({ ...prev, thumbnail_image_id: result.imageId }));
-        setPreviewImage(null); // 清除本地预览
-        toast.success(`Logo上传成功！文件大小: ${Math.round(result.fileSize / 1024)}KB`);
+        setFormData(prev => ({ ...prev, thumbnail_image_id: result.data.imageId }));
+        setPreviewImage(null); // 清除本地预览，让组件显示服务器图片
+        toast.success(`Logo上传成功！文件大小: ${Math.round(result.data.fileSize / 1024)}KB`);
       } else {
         throw new Error(result.error || '上传处理失败');
       }
@@ -1265,10 +1374,16 @@ function AdminContent() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={async (open) => {
+          if (!open && formData.thumbnail_image_id) {
+            // 对话框关闭时清理临时图片
+            await cleanupTempImage(formData.thumbnail_image_id);
+          }
+          setIsCreateDialogOpen(open);
+        }}>
                      <DialogTrigger asChild>
                        <Button 
-                         onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}
+                         onClick={async () => { await resetForm(); setIsCreateDialogOpen(true); }}
                          className="bg-black text-white hover:bg-gray-800 w-full sm:w-auto"
                        >
                          <Plus className="h-4 w-4 mr-2" />
@@ -1509,7 +1624,14 @@ function AdminContent() {
                     <DialogFooter>
                       <Button 
                         variant="outline" 
-                        onClick={() => setIsCreateDialogOpen(false)}
+                        onClick={async () => {
+                          // 清理临时图片
+                          if (formData.thumbnail_image_id) {
+                            await cleanupTempImage(formData.thumbnail_image_id);
+                          }
+                          setIsCreateDialogOpen(false);
+                           await resetForm();
+                        }}
                         className="border-gray-300 text-gray-700 hover:bg-gray-50"
                       >
                         取消
@@ -1593,8 +1715,8 @@ function AdminContent() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
-                            <div className="flex items-center gap-1"><Heart className="w-3 h-3" /> {workflow.like_count}</div>
-                            <div className="flex items-center gap-1"><Users className="w-3 h-3" /> {workflow.usage_count}</div>
+                            <div className="flex items-center gap-1"><Heart className="w-3 h-3" /> {workflow.like_count || 0}</div>
+                            <div className="flex items-center gap-1"><Users className="w-3 h-3" /> {workflow.usage_count || 0}</div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -2303,7 +2425,12 @@ function AdminContent() {
       </Dialog>
 
       {/* 创建用户对话框 */}
-      <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
+      <Dialog open={isCreateUserDialogOpen} onOpenChange={(open) => {
+        setIsCreateUserDialogOpen(open);
+        if (!open) {
+          setEmailError(''); // 关闭对话框时清除邮箱错误状态
+        }
+      }}>
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>创建新用户</DialogTitle>
@@ -2327,9 +2454,19 @@ function AdminContent() {
                 id="user-email"
                 type="email"
                 value={userFormData.email}
-                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setUserFormData({ ...userFormData, email });
+                  // 实时验证邮箱格式
+                  const error = validateEmail(email);
+                  setEmailError(error);
+                }}
                 placeholder="请输入邮箱地址"
+                className={emailError ? 'border-red-500 focus:border-red-500' : ''}
               />
+              {emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="user-password">密码</Label>
@@ -2337,9 +2474,19 @@ function AdminContent() {
                 id="user-password"
                 type="password"
                 value={userFormData.password}
-                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                placeholder="请输入密码"
+                onChange={(e) => {
+                  const password = e.target.value;
+                  setUserFormData({ ...userFormData, password });
+                  // 实时验证密码长度
+                  const error = validatePassword(password);
+                  setPasswordError(error);
+                }}
+                placeholder="请输入密码（至少6个字符）"
+                className={passwordError ? 'border-red-500 focus:border-red-500' : ''}
               />
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="user-role">角色</Label>
@@ -2366,7 +2513,11 @@ function AdminContent() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsCreateUserDialogOpen(false)}
+              onClick={() => {
+                setIsCreateUserDialogOpen(false);
+                setEmailError('');
+                setPasswordError('');
+              }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               取消
@@ -2382,7 +2533,12 @@ function AdminContent() {
       </Dialog>
 
       {/* 编辑用户对话框 */}
-      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+      <Dialog open={isEditUserDialogOpen} onOpenChange={(open) => {
+        setIsEditUserDialogOpen(open);
+        if (!open) {
+          setEmailError(''); // 关闭对话框时清除邮箱错误状态
+        }
+      }}>
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>编辑用户</DialogTitle>
@@ -2406,9 +2562,19 @@ function AdminContent() {
                 id="edit-user-email"
                 type="email"
                 value={userFormData.email}
-                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setUserFormData({ ...userFormData, email });
+                  // 实时验证邮箱格式
+                  const error = validateEmail(email);
+                  setEmailError(error);
+                }}
                 placeholder="请输入邮箱地址"
+                className={emailError ? 'border-red-500 focus:border-red-500' : ''}
               />
+              {emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="edit-user-password">密码</Label>
@@ -2416,9 +2582,23 @@ function AdminContent() {
                 id="edit-user-password"
                 type="password"
                 value={userFormData.password}
-                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                placeholder="留空则不修改密码"
+                onChange={(e) => {
+                  const password = e.target.value;
+                  setUserFormData({ ...userFormData, password });
+                  // 实时验证密码长度（仅在有输入时验证）
+                  if (password.trim()) {
+                    const error = validatePassword(password);
+                    setPasswordError(error);
+                  } else {
+                    setPasswordError('');
+                  }
+                }}
+                placeholder="留空则不修改密码（至少6个字符）"
+                className={passwordError ? 'border-red-500 focus:border-red-500' : ''}
               />
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="edit-user-role">角色</Label>
@@ -2445,7 +2625,11 @@ function AdminContent() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsEditUserDialogOpen(false)}
+              onClick={() => {
+                setIsEditUserDialogOpen(false);
+                setEmailError('');
+                setPasswordError('');
+              }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               取消
@@ -2573,6 +2757,12 @@ export default function AdminPage() {
 
 function AdminPageWithAuth() {
   const { isAuthenticated, user, login, loading } = useAuth();
+  
+  // 适配器函数，将login结果传递给AdminLogin组件
+  const handleAdminLogin = async (credentials: { username: string; password: string }): Promise<{ success: boolean; message?: string }> => {
+    const result = await login(credentials);
+    return result;
+  };
 
   if (loading) {
     return (
@@ -2604,7 +2794,7 @@ function AdminPageWithAuth() {
   }
 
   if (!isAuthenticated) {
-    return <AdminLogin onLogin={login} />;
+    return <AdminLogin onLogin={handleAdminLogin} />;
   }
 
   // 检查用户角色，只有管理员才能访问

@@ -14,7 +14,7 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (credentials: { username: string; password: string }) => Promise<boolean>;
+  login: (credentials: { username: string; password: string }) => Promise<{ success: boolean; message?: string }>;
   register: (credentials: { username: string; password: string; inviteCode: string }) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth();
   }, [isTokenLoaded, isUserDataLoaded]); // 只依赖localStorage加载状态
 
-  const login = async (credentials: { username: string; password: string }): Promise<boolean> => {
+  const login = async (credentials: { username: string; password: string }): Promise<{ success: boolean; message?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -177,14 +177,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         hasInitialized.current = false;
         
         console.log('登录成功，状态已更新:', { isAuthenticated: true, user: userData });
-        return true;
+        return { success: true };
       } else {
-        console.error('登录失败:', result.message);
-        return false;
+        // 登录失败，返回服务器返回的错误消息
+        const errorMessage = result.message || '用户名或密码错误';
+        console.error('登录失败:', errorMessage);
+        return { success: false, message: errorMessage };
       }
     } catch (error) {
       console.error('登录请求失败:', error);
-      return false;
+      return { success: false, message: '登录失败，请稍后重试' };
     }
   };
 

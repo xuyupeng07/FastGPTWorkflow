@@ -25,11 +25,11 @@ export async function GET(
         w.like_count,
         CASE WHEN ua.id IS NOT NULL THEN true ELSE false END as user_liked
       FROM workflows w
-      LEFT JOIN user_actions ua ON w.id = ua.workflow_id 
+      LEFT JOIN user_actions ua ON w.id::text = ua.workflow_id 
         AND ua.user_session_id = $2 
         AND ua.action_type = 'like'
       WHERE w.id = $1
-    `, [id, user_session_id]);
+    `, [parseInt(id), user_session_id]);
     
     if (result.rows.length === 0) {
       return createErrorResponse('工作流不存在', 404);

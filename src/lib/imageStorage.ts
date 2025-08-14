@@ -257,10 +257,16 @@ class ImageStorage {
     const client = await this.getClient();
     
     try {
-      const imageId = randomUUID();
-      
       // 获取图片信息
-      const metadata = await sharp(buffer).metadata();
+      let metadata: any = {};
+      
+      if (options.mimeType === 'image/svg+xml') {
+        // SVG文件不使用sharp处理，设置默认值
+        metadata = { width: null, height: null };
+      } else {
+        // 其他格式使用sharp获取元数据
+        metadata = await sharp(buffer).metadata();
+      }
       
       // 从文件名提取文件扩展名
       const fileExtension = options.fileName.split('.').pop()?.toLowerCase() || 'jpg';
@@ -268,14 +274,16 @@ class ImageStorage {
       // 生成唯一的文件名（如果重复）
       let uniqueFileName = options.fileName;
       let counter = 1;
+      let insertedId: string;
+      
       while (true) {
         try {
-          // 尝试插入图片
-          await client.query(
-            `INSERT INTO images (id, file_name, file_type, file_size, mime_type, width, height, image_data, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+          // 尝试插入图片，让数据库自动生成id
+          const result = await client.query(
+            `INSERT INTO images (file_name, file_type, file_size, mime_type, width, height, image_data, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+             RETURNING id`,
             [
-              imageId,
               uniqueFileName,
               fileExtension,
               buffer.length,
@@ -285,6 +293,8 @@ class ImageStorage {
               buffer
             ]
           );
+          
+          insertedId = result.rows[0].id.toString();
           break; // 插入成功，退出循环
         } catch (error: any) {
           if (error.code === '23505' && error.constraint === 'idx_unique_filename_type') {
@@ -299,7 +309,7 @@ class ImageStorage {
         }
       }
 
-      return imageId;
+      return insertedId;
     } finally {
       client.release();
     }
@@ -311,7 +321,6 @@ class ImageStorage {
     
     try {
       const { usageType = 'main', isPrimary = false } = options;
-      const usageId = randomUUID();
       
       // 如果设置为主图片，先取消其他图片的主图片状态
       if (isPrimary) {
@@ -339,11 +348,11 @@ class ImageStorage {
           [imageId, entityType, entityId, usageType, isPrimary]
         );
       } else {
-        // 如果不存在，则插入
+        // 如果不存在，则插入（让数据库自动生成id）
         await client.query(
-          `INSERT INTO image_usages (id, image_id, entity_type, entity_id, usage_type, is_primary, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, 0)`,
-          [usageId, imageId, entityType, entityId, usageType, isPrimary]
+          `INSERT INTO image_usages (image_id, entity_type, entity_id, usage_type, is_primary, sort_order)
+           VALUES ($1, $2, $3, $4, $5, 0)`,
+          [imageId, entityType, entityId, usageType, isPrimary]
         );
       }
     } finally {
@@ -369,11 +378,18 @@ class ImageStorage {
       const { image_data, mime_type } = imageResult.rows[0];
       const { width = 200, height = 200, quality = 85 } = options;
       
-      // 生成变体图片
-      const variantBuffer = await sharp(image_data)
-        .resize(width, height, { fit: 'cover' })
-        .jpeg({ quality })
-        .toBuffer();
+      let variantBuffer: Buffer;
+      
+      if (mime_type === 'image/svg+xml') {
+        // SVG文件不需要处理，直接使用原始数据
+        variantBuffer = image_data;
+      } else {
+        // 生成变体图片
+        variantBuffer = await sharp(image_data)
+          .resize(width, height, { fit: 'cover' })
+          .jpeg({ quality })
+          .toBuffer();
+      }
       
       // 存储变体
       await client.query(

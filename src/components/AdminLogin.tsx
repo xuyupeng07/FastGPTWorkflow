@@ -9,7 +9,7 @@ import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminLoginProps {
-  onLogin: (credentials: { username: string; password: string }) => Promise<boolean>;
+  onLogin: (credentials: { username: string; password: string }) => Promise<{ success: boolean; message?: string }>;
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
@@ -35,9 +35,9 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
 
     setIsLoading(true);
     try {
-      const success = await onLogin(credentials);
-      if (!success) {
-        toast.error('用户名或密码错误');
+      const result = await onLogin(credentials);
+      if (!result.success) {
+        toast.error(result.message || '用户名或密码错误');
       }
     } catch (error) {
       console.error('登录失败:', error);
