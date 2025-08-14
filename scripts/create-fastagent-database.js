@@ -2,13 +2,13 @@ const { Pool } = require('pg');
 
 // 连接到默认数据库以创建新数据库
 const adminPool = new Pool({
-  connectionString: 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/postgres?directConnection=true',
+  connectionString: process.env.ADMIN_DATABASE_URL || 'postgresql://username:password@localhost:5432/postgres?directConnection=true',
   ssl: false
 });
 
 // 连接到源数据库
 const sourcePool = new Pool({
-  connectionString: 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/?directConnection=true',
+  connectionString: process.env.SOURCE_DATABASE_URL || 'postgresql://username:password@localhost:5432/source_database?directConnection=true',
   ssl: false
 });
 
@@ -36,7 +36,7 @@ async function createFastAgentDatabase() {
     
     // 2. 连接到目标数据库
     targetPool = new Pool({
-      connectionString: 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/FastAgent?directConnection=true',
+      connectionString: process.env.TARGET_DATABASE_URL || 'postgresql://username:password@localhost:5432/FastAgent?directConnection=true',
       ssl: false
     });
     

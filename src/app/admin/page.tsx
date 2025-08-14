@@ -1609,7 +1609,7 @@ function AdminContent() {
                             checked={formData.is_featured}
                             onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
                           />
-                          <span>推荐</span>
+                          <span>VIP</span>
                         </label>
                         <label className="flex items-center space-x-2">
                           <input
@@ -1708,7 +1708,7 @@ function AdminContent() {
                             )}
                             {workflow.is_featured && (
                               <Badge variant="outline" className="text-blue-600 border-blue-600">
-                                推荐
+                                VIP
                               </Badge>
                             )}
                           </div>
@@ -2394,7 +2394,7 @@ function AdminContent() {
                   checked={formData.is_featured}
                   onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
                 />
-                <span>推荐</span>
+                <span>VIP</span>
               </label>
               <label className="flex items-center space-x-2">
                 <input

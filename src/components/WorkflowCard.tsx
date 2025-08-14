@@ -27,6 +27,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
   // 客户端渲染状态 - 必须在最前面声明
   const [isClient, setIsClient] = useState(false);
   const { isAuthenticated } = useAuth();
+  const logoRef = useRef<HTMLDivElement>(null);
   
 
   const [copySuccess, setCopySuccess] = useState(false);
@@ -459,11 +460,17 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
       className="workflow-card w-full h-48 sm:h-52 lg:h-56 group relative"
     >
       {workflow.is_featured && (
-         <div className="absolute top-5 right-0 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-1 rounded-tl-md rounded-bl-md z-10 shadow-md">
-                  <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                </div>
+         <div className="absolute top-3 right-0 z-10">
+           <div className="relative bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 text-black px-2 py-0 rounded-tl-md rounded-bl-md shadow-lg border border-yellow-300/80 backdrop-blur-sm overflow-hidden group">
+             {/* 金属光泽动效背景 */}
+             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out animate-shimmer"></div>
+             {/* 内部光泽效果 */}
+             <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10"></div>
+             {/* 边缘高光 */}
+             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
+             <span className="relative text-sm font-black tracking-wider drop-shadow-sm" style={{textShadow: '0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(255,255,255,0.5)'}}>VIP</span>
+           </div>
+         </div>
        )}
       <Card className="workflow-card h-full flex flex-col hover:shadow-md transition-all duration-300 border border-gray-100/50 bg-white rounded-xl overflow-hidden p-1 sm:p-1.5">
         {/* 主要内容区域 */}
@@ -471,7 +478,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
           {/* 顶部区域：logo和基本信息 */}
            <div className="flex gap-2 sm:gap-2.5 -mb-1">
              {/* 左侧logo */}
-             <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-lg border-2 border-transparent shadow-lg" style={{
+             <div ref={logoRef} className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-lg border-2 border-transparent shadow-lg" style={{
                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)'
              }}>
@@ -537,7 +544,8 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
           <Tooltip 
             content={workflow.description}
             side="top"
-            align="start"
+            align="center"
+            anchorRef={logoRef}
             className="max-w-sm text-sm leading-relaxed bg-white text-gray-900 border-gray-200 shadow-xl"
           >
             <p className="text-xs sm:text-sm text-gray-500 line-clamp-4 sm:line-clamp-3 leading-relaxed mt-1 sm:mt-2 lg:mt-2.5 cursor-pointer">

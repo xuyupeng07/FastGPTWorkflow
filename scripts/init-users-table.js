@@ -2,8 +2,8 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
 // 数据库连接配置
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/?directConnection=true';
-const DB_SCHEMA = process.env.DB_SCHEMA || 'publiccopy';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://username:password@localhost:5432/database_name?directConnection=true';
+const DB_SCHEMA = process.env.DB_SCHEMA || 'workflow';
 const FALLBACK_SCHEMA = process.env.DB_FALLBACK_SCHEMA || 'public';
 
 // 构建search_path

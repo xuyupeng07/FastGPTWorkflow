@@ -4,8 +4,8 @@
 
 ## 🌟 在线演示
 
-- **演示地址**: [https://fastgpt-workflow.vercel.app](https://fastgpt-workflow.vercel.app)
-- **管理后台**: [https://fastgpt-workflow.vercel.app/admin](https://fastgpt-workflow.vercel.app/admin)
+- **演示地址**: [https://lgcazbziudys.sealoshzh.site/](https://lgcazbziudys.sealoshzh.site/)
+- **GitHub 仓库**: [https://github.com/xuyupeng07/FastGPTWorkflow](https://github.com/xuyupeng07/FastGPTWorkflow)
 
 > 💡 无需注册即可体验所有功能！
 
@@ -60,9 +60,12 @@ pnpm install
 cp .env.example .env.local
 
 # 编辑 .env.local 文件，配置数据库连接和schema
-# DATABASE_URL=postgresql://username:password@host:port/database?directConnection=true
-# DB_SCHEMA=workflow                    # 主要使用的schema
-# DB_FALLBACK_SCHEMA=public            # 备用schema（可选）
+# 重要：请在 .env.local 中配置真实的数据库连接信息
+# DATABASE_URL=postgresql://your_username:your_password@your_host:your_port/your_database?directConnection=true
+# DB_SCHEMA=workflow
+# JWT_SECRET=your_strong_jwt_secret
+# DEFAULT_ADMIN_PASSWORD=your_secure_admin_password
+# REGISTRATION_INVITE_CODE=your_invite_code
 ```
 
 4. **初始化数据库**
@@ -222,7 +225,6 @@ node scripts/init-admin-user.js             # 创建管理员用户
    - `DB_SCHEMA`: 主要使用的schema (如: `workflow`)
    - `DB_FALLBACK_SCHEMA`: 备用schema (可选，如: `public`)
    - 格式: `postgresql://username:password@host:port/database?directConnection=true`
-   - 示例: `postgresql://postgres:password@localhost:5432/fastgpt_workflow`
 4. 运行数据库初始化脚本
 5. 点击部署即可
 
@@ -265,7 +267,7 @@ A: 访问 `/admin` 页面，使用管理员功能添加工作流。或者通过 
 A: 请确保 JSON 格式符合 FastGPT 的工作流配置标准，包含完整的节点和连接信息。
 
 ### Q: 如何配置数据库？
-A: 项目支持 PostgreSQL 数据库，在 `.env.local` 中配置 `DATABASE_URL`、`DB_SCHEMA` 和 `DB_FALLBACK_SCHEMA`。
+A: 项目支持 PostgreSQL 数据库，在 `.env.local` 中配置 `DATABASE_URL`、`DB_SCHEMA` 和 `DB_FALLBACK_SCHEMA`。请参考 `.env.example` 文件中的配置示例。注意：所有敏感信息（如数据库密码、JWT密钥等）都应该配置在 `.env.local` 文件中，该文件不会被提交到版本控制系统。
 
 ### Q: 如何切换数据库schema？
 A: 修改 `.env.local` 中的 `DB_SCHEMA` 环境变量，重启应用即可。详见 [SCHEMA_SWITCHING.md](SCHEMA_SWITCHING.md)。
@@ -277,11 +279,17 @@ A: 支持常见的图片格式 (PNG, JPG, SVG) 作为工作流缩略图。
 
 MIT License - 详见 [LICENSE](LICENSE) 文件
 
+## 👨‍💻 作者
+
+- **作者**: xuyupeng07
+- **邮箱**: 943471751@qq.com
+- **GitHub**: [https://github.com/xuyupeng07](https://github.com/xuyupeng07)
+
 ## 🙋‍♂️ 支持
 
-- 📧 问题反馈: [提交 Issue](https://github.com/your-repo/issues)
-- 💬 讨论交流: [GitHub Discussions](https://github.com/your-repo/discussions)
-- 📖 文档: [项目 Wiki](https://github.com/your-repo/wiki)
+- 📧 问题反馈: [提交 Issue](https://github.com/xuyupeng07/FastGPTWorkflow/issues)
+- 💬 讨论交流: [GitHub Discussions](https://github.com/xuyupeng07/FastGPTWorkflow/discussions)
+- 📖 文档: [项目 Wiki](https://github.com/xuyupeng07/FastGPTWorkflow/wiki)
 
 ---
 

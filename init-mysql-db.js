@@ -5,7 +5,8 @@ async function initializeDatabase() {
   
   try {
     // 连接到MySQL数据库
-    connection = await mysql.createConnection('mysql://root:bqsqcpp9@dbconn.sealoshzh.site:35853/datafollow');
+    const connectionString = process.env.MYSQL_DATABASE_URL || 'mysql://username:password@localhost:3306/database_name';
+    connection = await mysql.createConnection(connectionString);
     console.log('✅ 连接到MySQL数据库成功');
     
     // 创建platforms表

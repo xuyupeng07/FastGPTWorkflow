@@ -17,7 +17,7 @@
 
 ```bash
 # 主要使用的schema
-DB_SCHEMA=publiccopy
+DB_SCHEMA=workflow
 
 # 备用schema（当主schema中找不到表时会查找此schema）
 DB_FALLBACK_SCHEMA=public
@@ -25,7 +25,7 @@ DB_FALLBACK_SCHEMA=public
 
 ### 配置说明
 
-- **DB_SCHEMA**: 主要使用的schema名称（默认: `publiccopy`）
+- **DB_SCHEMA**: 主要使用的schema名称（默认: workflow`）
 - **DB_FALLBACK_SCHEMA**: 备用schema名称（默认: `public`）
 
 ## 🔄 快速切换方法
@@ -57,8 +57,8 @@ node switch_schema.js custom your_schema_name
 DB_SCHEMA=public
 DB_FALLBACK_SCHEMA=
 
-# 使用publiccopy schema
-DB_SCHEMA=publiccopy
+# 使用workflow schema
+DB_SCHEMA=workflow
 DB_FALLBACK_SCHEMA=public
 
 # 使用自定义schema
@@ -98,12 +98,12 @@ PostgreSQL使用`search_path`来确定查找表的顺序：
 
 假设配置为：
 ```bash
-DB_SCHEMA=publiccopy
+DB_SCHEMA=workflow
 DB_FALLBACK_SCHEMA=public
 ```
 
 当执行SQL查询`SELECT * FROM workflows`时：
-1. 首先查找`publiccopy.workflows`
+1. 首先查找`workflow.workflows`
 2. 如果不存在，则查找`public.workflows`
 
 ## 🛠️ Schema管理

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ExternalLink, Users, Award, Zap } from 'lucide-react';
 import { partners, categoryIcons, categoryLabels, type Partner } from '@/data/partners';
-import { CompanyScrollRight } from './CompanyScroll';
+import { CompanyScrollRight, CompanyScrollLeft } from './CompanyScroll';
 
 // 图标映射
 const iconMap = {
@@ -32,20 +32,34 @@ export function Partners({
   // Add this missing state declaration
   const [isPaused, setIsPaused] = useState(false);
   
-  const partnersToShow = variant === 'featured' ? featuredPartners : displayPartners;
+  // 重新排列顺序：让OpenAI在中间位置，Anthropic在其左边
+  const reorderedPartners = maxItems ? [
+    partners.find(p => p.id === '2'), // Anthropic
+    partners.find(p => p.id === '1'), // OpenAI
+    ...partners.filter(p => p.id !== '1' && p.id !== '2').slice(0, maxItems - 2)
+  ].filter(Boolean) as Partner[] : partners;
+  
+  const partnersToShow = variant === 'featured' ? featuredPartners : (variant === 'compact' ? reorderedPartners : displayPartners);
 
   if (variant === 'compact') {
-    // 创建五倍的合作伙伴数组以实现完全无缝滚动
-    const scrollPartners = [...partnersToShow, ...partnersToShow, ...partnersToShow, ...partnersToShow, ...partnersToShow];
     const scrollRef = useRef<HTMLDivElement>(null);
     const [isVisible, setIsVisible] = useState(false);
-
     const containerRef = useRef<HTMLDivElement>(null);
     
-    // 计算单个项目的宽度
-    const itemWidth = 120; // 96px width + 24px margin
-    const singleSetWidth = partnersToShow.length * itemWidth;
-    const speed = 40; // 滚动速度
+    // 状态管理 - 参考test.md的优化实现
+    // 从环境变量读取滚动速度
+    const scrollSpeed = parseInt(process.env.NEXT_PUBLIC_CARROUSEL_SCROLL_SPEED_LEFT || '20');
+  const stateRef = useRef({
+     speed: scrollSpeed / 10,           // 滚动速度，从环境变量读取并除以10适配动画帧率
+     isRunning: true,    // 是否运行
+     direction: -1,      // 1: 向右, -1: 向左（改为向左滚动）
+     position: 0,        // 当前位置
+     itemWidth: 200,     // 单个项目宽度
+     itemsCount: partnersToShow.length, // 项目数量
+     totalWidth: 0,      // 总宽度(原始项目)
+     lastFrameTime: 0,   // 上一帧时间戳
+     isInitialized: false // 是否完成初始化
+   });
 
     // 入场动画检测
     useEffect(() => {
@@ -65,49 +79,134 @@ export function Partners({
       return () => observer.disconnect();
     }, []);
 
-    // 真正无缝的无限滚动逻辑
-    useEffect(() => {
-      const scrollContainer = scrollRef.current;
-      if (!scrollContainer || !isVisible) return;
-
-      let animationId: number;
-      // 从中间位置开始，确保两边都有足够的内容
-      let currentTranslate = -singleSetWidth * 2;
-      let lastTime = 0;
+    // 渐进式创建合作伙伴项 - 避免一次性DOM操作过多
+    const createItemsProgressive = useCallback((index = 0) => {
+      const track = scrollRef.current;
+      if (!track) return;
       
-      // 预计算移动步长
-      const moveStep = speed / 60;
+      if (index >= partnersToShow.length * 2) { // 原始项+复制项
+        // 所有项目创建完成后计算尺寸并开始动画
+        const firstItem = track.querySelector('.partner-item') as HTMLElement;
+         if (firstItem) {
+           stateRef.current.itemWidth = firstItem.offsetWidth + 32; // 包含margin
+          stateRef.current.totalWidth = stateRef.current.itemWidth * stateRef.current.itemsCount;
+          stateRef.current.isInitialized = true;
+        }
+        return;
+      }
       
-      // 设置初始位置
-      scrollContainer.style.transform = `translate3d(${currentTranslate}px, 0, 0)`;
+      // 创建单个项目
+      const partner = partnersToShow[index % partnersToShow.length];
+      const item = document.createElement('div');
+      item.className = 'partner-item flex-shrink-0 flex items-center justify-center p-3 mx-4 rounded-lg';
+      item.innerHTML = `
+        <div class="w-24 h-12 relative">
+          <img
+            src="${partner.logo}"
+            alt="${partner.name}"
+            class="w-full h-full object-contain filter"
+            loading="lazy"
+          />
+        </div>
+      `;
+      track.appendChild(item);
+      
+      // 下一帧继续创建，避免阻塞主线程
+      requestAnimationFrame(() => createItemsProgressive(index + 1));
+    }, [partnersToShow]);
 
-      const animate = (currentTime: number) => {
-         // 使用时间差来确保稳定的帧率
-        if (currentTime - lastTime >= 16.67) { // 约60fps
-          // 每帧向左移动
-          currentTranslate -= moveStep;
+    // 优化的动画循环
+    const animate = useCallback((timestamp: number) => {
+      const state = stateRef.current;
+      const track = scrollRef.current;
+      
+      // 未初始化完成不执行动画
+      if (!state.isInitialized || !track) {
+        requestAnimationFrame(animate);
+        return;
+      }
+      
+      // 计算时间差
+      if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+      const deltaTime = timestamp - state.lastFrameTime;
+      const frameInterval = 16; // 约60fps
+      
+      if (deltaTime >= frameInterval) {
+        if (state.isRunning) {
+          // 计算移动距离
+          const moveDistance = (state.speed * deltaTime) / frameInterval;
+          state.position += state.direction * moveDistance;
           
-          // 向左滚动：当移动到最左边时，无缝重置到右边的等效位置
-          if (currentTranslate <= -singleSetWidth * 3) {
-            currentTranslate = -singleSetWidth * 2;
+          // 循环逻辑
+          if (state.position >= state.totalWidth) {
+            state.position -= state.totalWidth;
+          } else if (state.position <= 0) {
+            state.position += state.totalWidth;
           }
           
-          // 使用transform3d启用硬件加速
-          scrollContainer.style.transform = `translate3d(${currentTranslate}px, 0, 0)`;
-          lastTime = currentTime;
+          // 应用位置
+          track.style.transform = `translateX(-${state.position}px)`;
         }
+        // 无论是否运行都要更新时间戳，避免暂停后恢复时跳跃
+        state.lastFrameTime = timestamp;
+      }
+      
+      requestAnimationFrame(animate);
+    }, []);
+
+    // 初始化和动画启动
+    useEffect(() => {
+      if (!isVisible || !scrollRef.current) return;
+      
+      // 清空容器
+      scrollRef.current.innerHTML = '';
+      stateRef.current.isInitialized = false;
+      stateRef.current.position = 0;
+      stateRef.current.lastFrameTime = 0;
+      
+      // 使用requestIdleCallback在浏览器空闲时开始创建
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          createItemsProgressive();
+          requestAnimationFrame(animate);
+        });
+      } else {
+        // 降级处理
+        setTimeout(() => {
+          createItemsProgressive();
+          requestAnimationFrame(animate);
+        }, 100);
+      }
+    }, [isVisible, createItemsProgressive, animate]);
+
+    // 窗口大小变化处理
+    useEffect(() => {
+      const handleResize = () => {
+        const state = stateRef.current;
+        const track = scrollRef.current;
+        if (!state.isInitialized || !track) return;
         
-        animationId = requestAnimationFrame(animate);
+        const ratio = state.position / state.totalWidth;
+        // 清空并重新渐进式创建项目
+        track.innerHTML = '';
+        state.isInitialized = false;
+        createItemsProgressive();
+        // 恢复位置比例
+        state.position = ratio * state.totalWidth;
       };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, [createItemsProgressive]);
 
-      animationId = requestAnimationFrame(animate);
-
-      return () => {
-        if (animationId) {
-          cancelAnimationFrame(animationId);
-        }
-      };
-    }, [singleSetWidth, speed, isVisible]);
+    // 鼠标悬停暂停功能
+    const handleMouseEnter = () => {
+      stateRef.current.isRunning = false;
+    };
+    
+    const handleMouseLeave = () => {
+      stateRef.current.isRunning = true;
+    };
     
     return (
       <section className="py-8 bg-gradient-to-r from-gray-50 to-blue-50/30 overflow-hidden">
@@ -131,6 +230,8 @@ export function Partners({
           <div 
             ref={scrollRef}
             className="flex px-4"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             style={{
               willChange: 'transform',
               backfaceVisibility: 'hidden',
@@ -138,23 +239,7 @@ export function Partners({
               transform: 'translateZ(0)' // 强制硬件加速
             }}
           >
-            {scrollPartners.map((partner, index) => (
-              <div
-                key={`${partner.id}-${Math.floor(index / partners.length)}-${index % partners.length}`}
-                className="flex-shrink-0 flex items-center justify-center p-3 mx-4 rounded-lg"
-              >
-                <div className="w-24 h-12 relative">
-                  <Image
-                    src={partner.logo}
-                    alt={partner.name}
-                    fill
-                    className="object-contain filter"
-                    sizes="96px"
-                    unoptimized
-                  />
-                </div>
-              </div>
-            ))}
+            {/* 项目将通过JavaScript动态生成 */}
           </div>
         </div>
         

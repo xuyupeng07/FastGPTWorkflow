@@ -11,6 +11,7 @@ interface TooltipProps {
   align?: 'start' | 'center' | 'end';
   className?: string;
   delayDuration?: number;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 function Tooltip({
@@ -19,7 +20,8 @@ function Tooltip({
   side = 'top',
   align = 'center',
   className,
-  delayDuration = 300
+  delayDuration = 300,
+  anchorRef
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -35,8 +37,9 @@ function Tooltip({
 
   const handleMouseEnter = () => {
      // 计算相对位置
-     if (triggerRef.current) {
-       const rect = triggerRef.current.getBoundingClientRect();
+     const targetEl = anchorRef?.current ?? triggerRef.current;
+     if (targetEl) {
+       const rect = targetEl.getBoundingClientRect();
        
        let x = rect.left;
        let y = rect.top;
@@ -44,7 +47,7 @@ function Tooltip({
        // 根据side设置相对位置
        switch (side) {
          case 'top':
-           y = rect.top - 10; // 固定在元素上方10px
+           y = rect.top - 20; // 固定在元素上方20px，增加间距避免遮挡
            break;
          case 'bottom':
            y = rect.bottom + 10; // 固定在元素下方10px
@@ -104,9 +107,10 @@ function Tooltip({
     if (!isVisible) return;
 
     const calculatePosition = () => {
-       if (!triggerRef.current) return;
+       const targetEl = anchorRef?.current ?? triggerRef.current;
+       if (!targetEl) return;
        
-       const rect = triggerRef.current.getBoundingClientRect();
+       const rect = targetEl.getBoundingClientRect();
        
        let x = rect.left;
        let y = rect.top;
@@ -114,7 +118,7 @@ function Tooltip({
        // 根据side设置相对位置
        switch (side) {
          case 'top':
-           y = rect.top - 10; // 固定在元素上方10px
+           y = rect.top - 20; // 固定在元素上方20px，增加间距避免遮挡
            break;
          case 'bottom':
            y = rect.bottom + 10; // 固定在元素下方10px
@@ -172,7 +176,7 @@ function Tooltip({
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleResize);
     };
-  }, [isVisible, side, align]);
+  }, [isVisible, side, align, anchorRef]);
 
   const getArrowClasses = () => {
     const baseClasses = 'absolute w-2 h-2 bg-white border-white';
@@ -218,27 +222,33 @@ function Tooltip({
   };
 
   const getTooltipTransform = () => {
+    const transforms: string[] = [];
+    if (side === 'top') {
+      transforms.push('-translate-y-full');
+    }
+
     if (side === 'top' || side === 'bottom') {
       switch (align) {
         case 'start':
-          return '';
+          // ensure transform class exists when we have vertical translation
+          return `transform ${transforms.join(' ')}`.trim();
         case 'center':
-          return 'transform -translate-x-1/2';
+          return `transform -translate-x-1/2 ${transforms.join(' ')}`.trim();
         case 'end':
-          return 'transform -translate-x-full';
+          return `transform -translate-x-full ${transforms.join(' ')}`.trim();
         default:
-          return 'transform -translate-x-1/2';
+          return `transform -translate-x-1/2 ${transforms.join(' ')}`.trim();
       }
     } else {
       switch (align) {
         case 'start':
-          return '';
+          return transforms.length ? `transform ${transforms.join(' ')}`.trim() : '';
         case 'center':
-          return 'transform -translate-y-1/2';
+          return `transform -translate-y-1/2 ${transforms.join(' ')}`.trim();
         case 'end':
-          return 'transform -translate-y-full';
+          return `transform -translate-y-full ${transforms.join(' ')}`.trim();
         default:
-          return 'transform -translate-y-1/2';
+          return `transform -translate-y-1/2 ${transforms.join(' ')}`.trim();
       }
     }
   };
