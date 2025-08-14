@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ExternalLink, Users, Award, Zap } from 'lucide-react';
 import { partners, categoryIcons, categoryLabels, type Partner } from '@/data/partners';
+import { CompanyScrollRight } from './CompanyScroll';
 
 // 图标映射
 const iconMap = {
@@ -28,54 +29,33 @@ export function Partners({
   const displayPartners = maxItems ? partners.slice(0, maxItems) : partners;
   const featuredPartners = partners.filter(p => p.featured);
   
+  // Add this missing state declaration
+  const [isPaused, setIsPaused] = useState(false);
+  
   const partnersToShow = variant === 'featured' ? featuredPartners : displayPartners;
 
   if (variant === 'compact') {
     // 创建双倍的合作伙伴数组以实现无缝滚动
     const scrollPartners = [...partnersToShow, ...partnersToShow];
     
-    // 使用ref来控制滚动容器
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [translateX, setTranslateX] = useState(0);
-    const [isPaused, setIsPaused] = useState(false);
-    
-    useEffect(() => {
-      if (isPaused) return;
-      
-      const interval = setInterval(() => {
-        setTranslateX(prev => {
-          // 当移动到一半位置时（即第一组完全移出视野），重置到起始位置
-          const resetPoint = -50; // 50% 对应第一组完全移出
-          if (prev <= resetPoint) {
-            return 0;
-          }
-          return prev - 0.1; // 每次移动0.1%
-        });
-      }, 50); // 每50ms移动一次，创建平滑动画
-      
-      return () => clearInterval(interval);
-    }, [isPaused]);
-    
     return (
       <section className="py-8 bg-gradient-to-r from-gray-50 to-blue-50/30 overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="text-center mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">合作伙伴</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">生态合作伙伴</h3>
             <p className="text-sm text-gray-600">与行业领先企业共同构建AI生态</p>
           </div>
         </div>
         
-        {/* 滚动区域 - 80%宽度居中显示 */}
-        <div className="relative overflow-hidden w-4/5 mx-auto">
-          {/* 遮罩层 - 完全隐藏超出边界的内容 */}
+        {/* 合作伙伴滚动区域 */}
+        <div className="relative overflow-hidden w-4/5 mx-auto mb-8">
+          {/* 遮罩层 */}
           <div className="absolute left-0 top-0 w-4 sm:w-6 lg:w-8 xl:w-12 h-full bg-gradient-to-r from-gray-50 via-gray-50 to-transparent z-10 pointer-events-none"></div>
           <div className="absolute right-0 top-0 w-4 sm:w-6 lg:w-8 xl:w-12 h-full bg-gradient-to-l from-gray-50 via-gray-50 to-transparent z-10 pointer-events-none"></div>
           
           {/* 滚动容器 */}
           <div 
-            ref={scrollContainerRef}
-            className="flex px-4 transition-transform duration-0"
-            style={{ transform: `translateX(${translateX}%)` }}
+            className={`flex px-4 ${isPaused ? 'paused' : 'animate-infinite-scroll'}`}
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
@@ -123,6 +103,29 @@ export function Partners({
             ))}
           </div>
         </div>
+        
+        {/* 公司图标滚动区域 - 使用独立组件 */}
+        <CompanyScrollRight />
+        
+        {/* CSS动画样式 */}
+        <style jsx>{`
+          @keyframes infinite-scroll {
+            0% {
+              transform: translateX(0%);
+            }
+            100% {
+              transform: translateX(-50%);
+            }
+          }
+          
+          .animate-infinite-scroll {
+            animation: infinite-scroll 30s linear infinite;
+          }
+          
+          .paused {
+            animation-play-state: paused;
+          }
+        `}</style>
       </section>
     );
   }
