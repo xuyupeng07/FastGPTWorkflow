@@ -500,8 +500,8 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                 <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 mt-0.5 sm:mt-1">
                   <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center border border-gray-100 shadow-sm overflow-hidden">
                      <Image
-                        src="/fastgpt.svg"
-                        alt="FastGPT"
+                        src={(workflow.author?.name === 'FastGPT团队' || !workflow.author?.name) ? "/fastgpt.svg" : "/community.svg"}
+                        alt={(workflow.author?.name === 'FastGPT团队' || !workflow.author?.name) ? "FastGPT" : "社区贡献者"}
                         width={20}
                         height={20}
                         className="max-w-full max-h-full object-contain"
@@ -574,41 +574,44 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
 
           {/* 操作按钮 */}
           <div className="flex gap-1 sm:gap-1.5">
-            <Tooltip 
-              content={hasJsonConfig === false ? "该工作流没有配置JSON" : "复制工作流配置JSON"}
-              side="bottom"
-              align="center"
-              className="text-xs bg-gray-900 text-white border-gray-700"
-            >
-              <Button 
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleCopyJson}
-                disabled={copying || hasJsonConfig === false}
-                className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
-                  copying || hasJsonConfig === false ? 'opacity-50 cursor-not-allowed' : ''
-                } ${
-                  copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
-                } ${
-                  hasJsonConfig === false ? 'bg-gray-100 text-gray-400' : ''
-                }`}
+            {/* 只有在登录状态下才显示复制按钮 */}
+            {isAuthenticated && (
+              <Tooltip 
+                content={hasJsonConfig === false ? "该工作流没有配置JSON" : "复制工作流配置JSON"}
+                side="bottom"
+                align="center"
+                className="text-xs bg-gray-900 text-white border-gray-700"
               >
-                {copying ? (
-                  <>
-                    <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
-                    复制中...
-                  </>
-                ) : copySuccess ? (
-                  <>
-                    <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
-                    已复制
-                  </>
-                ) : (
-                  <>                  Copy                </>
-                )}
-              </Button>
-            </Tooltip>
+                <Button 
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyJson}
+                  disabled={copying || hasJsonConfig === false}
+                  className={`border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg px-1.5 sm:px-2 lg:px-2.5 py-0.5 sm:py-1 text-xs font-medium transition-all duration-200 h-5 sm:h-6 ${
+                    copying || hasJsonConfig === false ? 'opacity-50 cursor-not-allowed' : ''
+                  } ${
+                    copySuccess ? 'border-green-300 bg-green-50 text-green-700' : ''
+                  } ${
+                    hasJsonConfig === false ? 'bg-gray-100 text-gray-400' : ''
+                  }`}
+                >
+                  {copying ? (
+                    <>
+                      <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 animate-spin" />
+                      复制中...
+                    </>
+                  ) : copySuccess ? (
+                    <>
+                      <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1 text-green-600" />
+                      已复制
+                    </>
+                  ) : (
+                    <>                  Copy                </>
+                  )}
+                </Button>
+              </Tooltip>
+            )}
             <Tooltip 
                content={
                  (isAuthenticated && !workflow.no_login_url) 

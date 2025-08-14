@@ -17,8 +17,8 @@ interface WorkflowGridProps {
 }
 
 const sortOptions = [
-  { value: 'usage', label: '使用量' },
   { value: 'popularity', label: '热门度' },
+  { value: 'usage', label: '使用量' },
   { value: 'newest', label: '最新' }
 ];
 
@@ -30,7 +30,7 @@ export function WorkflowGrid({
   onCategoryChange,
   onDataUpdate
 }: WorkflowGridProps) {
-  const [sortBy, setSortBy] = useState('popularity');
+  const [sortBy, setSortBy] = useState('usage');
 
   // 排序工作流（过滤已在父组件完成）
   const sortedWorkflows = useMemo(() => {
@@ -39,9 +39,17 @@ export function WorkflowGrid({
         case 'newest':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'usage':
+          // 使用量排序：使用量一致时，热门度越高排名越前
+          if (b.usageCount === a.usageCount) {
+            return b.likeCount - a.likeCount;
+          }
           return b.usageCount - a.usageCount;
         case 'popularity':
         default:
+          // 热门度排序：热门度一致时，使用量越多排名越前
+          if (b.likeCount === a.likeCount) {
+            return b.usageCount - a.usageCount;
+          }
           return b.likeCount - a.likeCount;
       }
     });
