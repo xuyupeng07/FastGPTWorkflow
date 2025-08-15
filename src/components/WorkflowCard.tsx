@@ -461,14 +461,12 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
     >
       {workflow.is_featured && (
          <div className="absolute top-3 right-0 z-10">
-           <div className="relative bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 text-black px-2 py-0 rounded-tl-md rounded-bl-md shadow-lg border border-yellow-300/80 backdrop-blur-sm overflow-hidden group">
-             {/* 金属光泽动效背景 */}
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out animate-shimmer"></div>
-             {/* 内部光泽效果 */}
-             <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10"></div>
-             {/* 边缘高光 */}
-             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
-             <span className="relative text-sm font-black tracking-wider drop-shadow-sm" style={{textShadow: '0 1px 2px rgba(0,0,0,0.3), 0 0 4px rgba(255,255,255,0.5)'}}>VIP</span>
+           <div className="relative bg-gradient-to-r from-amber-50 via-yellow-100 to-amber-50 text-amber-700 px-1.5 py-0 rounded-tl-lg rounded-bl-lg shadow-sm backdrop-blur-sm overflow-hidden group">
+             {/* 简洁光泽动效 */}
+             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/30 to-transparent -skew-x-12 transform -translate-x-full group-hover:translate-x-full transition-transform duration-800 ease-out"></div>
+             {/* 清新内部光效 */}
+             <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent"></div>
+             <span className="relative text-xs font-bold tracking-wide" style={{fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif', textShadow: '0 0.5px 1px rgba(180,83,9,0.15)'}}>VIP</span>
            </div>
          </div>
        )}
