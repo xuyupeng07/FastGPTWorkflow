@@ -55,16 +55,17 @@ export async function POST(request: NextRequest) {
 
     // 创建新用户
     const insertUserQuery = `
-      INSERT INTO users (username, email, password_hash, role, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
-      RETURNING id, username, email, role, created_at
+      INSERT INTO users (username, email, password_hash, role, is_active, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+      RETURNING id, username, email, role, is_active, created_at
     `;
     
     const newUserResult = await pool.query(insertUserQuery, [
       username,
       email,
       hashedPassword,
-      'user' // 默认角色为普通用户
+      'user', // 默认角色为普通用户
+      true    // 注册后直接激活
     ]);
 
     const newUser = newUserResult.rows[0];
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
           username: newUser.username,
           email: newUser.email,
           role: newUser.role,
+          is_active: newUser.is_active,
           created_at: newUser.created_at
         }
       }

@@ -18,9 +18,11 @@ export default function RegisterPage() {
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     inviteCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -74,6 +76,11 @@ export default function RegisterPage() {
 
     if (credentials.password.length < 6) {
       toast.error('密码至少6个字符');
+      return;
+    }
+
+    if (credentials.password !== credentials.confirmPassword) {
+      toast.error('两次输入的密码不一致');
       return;
     }
 
@@ -211,6 +218,34 @@ export default function RegisterPage() {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" /> : <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 确认密码输入 */}
+              <div>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">确认密码</Label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="请再次输入密码"
+                    value={credentials.confirmPassword}
+                    onChange={(e) => setCredentials(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="pl-10 pr-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                    minLength={6}
+                    maxLength={50}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" /> : <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />}
                   </button>
                 </div>
               </div>

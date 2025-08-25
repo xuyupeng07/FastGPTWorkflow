@@ -11,7 +11,9 @@ import { z } from 'zod';
 // 用户更新验证schema
 const updateUserSchema = z.object({
   username: z.string().min(1, '用户名不能为空').max(50, '用户名长度不能超过50个字符').optional(),
-  email: z.string().email('邮箱格式不正确').optional(),
+  email: z.string().optional().refine((val) => !val || z.string().email().safeParse(val).success, {
+    message: '邮箱格式不正确'
+  }),
   password: z.string().min(6, '密码长度至少6个字符').optional(),
   role: z.enum(['admin', 'user']).optional(),
   is_active: z.boolean().optional()

@@ -590,7 +590,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
             <Tooltip 
               content={
                 !isAuthenticated 
-                  ? "登录后可复制工作流源码" 
+                  ? "联系FastGPT商务团队，登录后可复制工作流源码" 
                   : hasJsonConfig === false 
                     ? "该工作流没有配置源码，请联系管理员获取" 
                     : "复制源码"
@@ -633,7 +633,7 @@ export function WorkflowCard({ workflow, index = 0 }: WorkflowCardProps) {
                  (isAuthenticated && !workflow.no_login_url) 
                    ? "该工作流暂未配置体验链接，请联系管理员获取" 
                    : (!isAuthenticated && !workflow.demo_url)
-                     ? "登录后可快速体验该工作流"
+                     ? "联系FastGPT商务团队获取更多工作流模板"
                      : isAuthenticated 
                        ? "快速体验" 
                        : "跳转至FastGPT登录页，扫码登录后系统将自动创建该工作流"

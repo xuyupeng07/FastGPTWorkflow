@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Heart, Users, LogOut, Lock, Eye, EyeOff, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import Image from 'next/image';
@@ -131,6 +131,7 @@ function AdminContent() {
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: 'user' as 'admin' | 'user',
     is_active: true
   });
@@ -139,6 +140,10 @@ function AdminContent() {
   const [emailError, setEmailError] = useState('');
   // 密码验证状态
   const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  // 密码可见性状态
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // 邮箱格式验证函数
   const validateEmail = (email: string) => {
@@ -367,16 +372,13 @@ function AdminContent() {
       toast.error('请输入用户名');
       return;
     }
-    if (!userFormData.email.trim()) {
-      toast.error('请输入邮箱');
-      return;
-    }
-    
-    // 验证邮箱格式
-    const emailValidationError = validateEmail(userFormData.email);
-    if (emailValidationError) {
-      setEmailError(emailValidationError);
-      return;
+    // 验证邮箱格式（仅在有输入时验证）
+    if (userFormData.email.trim()) {
+      const emailValidationError = validateEmail(userFormData.email);
+      if (emailValidationError) {
+        setEmailError(emailValidationError);
+        return;
+      }
     }
     
     if (!userFormData.password.trim()) {
@@ -388,6 +390,12 @@ function AdminContent() {
     const passwordValidationError = validatePassword(userFormData.password);
     if (passwordValidationError) {
       setPasswordError(passwordValidationError);
+      return;
+    }
+    
+    // 验证密码确认
+    if (userFormData.password !== userFormData.confirmPassword) {
+      setConfirmPasswordError('两次输入的密码不一致');
       return;
     }
     
@@ -408,11 +416,15 @@ function AdminContent() {
           username: '',
           email: '',
           password: '',
+          confirmPassword: '',
           role: 'user',
           is_active: true
         });
         setEmailError('');
         setPasswordError('');
+        setConfirmPasswordError('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         fetchUsers();
       } else {
         // 显示后端返回的详细错误信息
@@ -431,6 +443,7 @@ function AdminContent() {
       username: user.username,
       email: user.email || '',
       password: '',
+      confirmPassword: '',
       role: user.role,
       is_active: user.is_active
     });
@@ -485,6 +498,7 @@ function AdminContent() {
           username: '',
           email: '',
           password: '',
+          confirmPassword: '',
           role: 'user',
           is_active: true
         });
@@ -1192,16 +1206,26 @@ function AdminContent() {
       <div className="container mx-auto p-6">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">工作流管理后台</h1>
-            <p className="text-gray-600">管理工作流卡片的增删改查操作</p>
+            <h1 className="text-3xl font-bold mb-2">FastGPT 工作流管理中心</h1>
+            <p className="text-gray-600">全面管理 AI 工作流模板、分类、作者和用户，提供完整的后台管理解决方案</p>
           </div>
+          <div className="flex items-center gap-3">
           <Button
-          onClick={logout}
-          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          登出
-        </Button>
+            onClick={() => window.location.href = '/'}
+            variant="outline"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Home className="h-4 w-4" />
+            返回首页
+          </Button>
+          <Button
+            onClick={logout}
+            className="bg-black text-white hover:bg-gray-800 flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            登出
+          </Button>
+        </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -1215,8 +1239,8 @@ function AdminContent() {
           <TabsContent value="workflows" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>工作流列表</CardTitle>
-                <CardDescription>管理所有工作流卡片</CardDescription>
+                <CardTitle>工作流模板管理</CardTitle>
+                <CardDescription>创建、编辑、删除和发布 AI 工作流模板，管理模板的分类、作者、缩略图等详细信息</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -1260,8 +1284,8 @@ function AdminContent() {
           <TabsContent value="categories" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>分类管理</CardTitle>
-                <CardDescription>管理工作流分类</CardDescription>
+                <CardTitle>分类体系管理</CardTitle>
+                <CardDescription>组织和维护工作流分类结构，优化用户浏览体验和内容发现效率</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center py-12">
@@ -1277,8 +1301,8 @@ function AdminContent() {
           <TabsContent value="authors" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>作者管理</CardTitle>
-                <CardDescription>管理工作流作者</CardDescription>
+                <CardTitle>作者信息管理</CardTitle>
+                <CardDescription>管理工作流创作者档案，包括个人信息、认证状态、作品统计等完整信息</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center py-12">
@@ -1294,8 +1318,8 @@ function AdminContent() {
           <TabsContent value="stats" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>统计信息</CardTitle>
-                <CardDescription>查看系统统计数据</CardDescription>
+                <CardTitle>数据统计分析</CardTitle>
+                <CardDescription>实时监控平台运营数据，包括工作流使用量、用户活跃度、热门内容等关键指标</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center py-12">
@@ -1316,17 +1340,28 @@ function AdminContent() {
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">工作流管理后台</h1>
-          <p className="text-sm sm:text-base text-gray-600">管理工作流卡片的增删改查操作</p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">FastGPT 工作流管理中心</h1>
+          <p className="text-sm sm:text-base text-gray-600">全面管理 AI 工作流模板、分类、作者和用户，提供完整的后台管理解决方案</p>
         </div>
-        <Button
-          onClick={logout}
-          className="bg-black text-white hover:bg-gray-800 flex items-center gap-2 w-fit"
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">登出</span>
-          <span className="sm:hidden">退出</span>
-        </Button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button
+            onClick={() => window.location.href = '/'}
+            variant="outline"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2 w-fit"
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">返回首页</span>
+            <span className="sm:hidden">首页</span>
+          </Button>
+          <Button
+            onClick={logout}
+            className="bg-black text-white hover:bg-gray-800 flex items-center gap-2 w-fit"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">登出</span>
+            <span className="sm:hidden">退出</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
@@ -1343,8 +1378,8 @@ function AdminContent() {
           {/* 工具栏 */}
           <Card>
             <CardHeader>
-              <CardTitle>工作流列表</CardTitle>
-              <CardDescription>管理所有工作流卡片</CardDescription>
+              <CardTitle>工作流模板管理</CardTitle>
+              <CardDescription>创建、编辑、删除和发布 AI 工作流模板，管理模板的分类、作者、缩略图等详细信息</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col lg:flex-row gap-4 mb-6">
@@ -1787,8 +1822,8 @@ function AdminContent() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>分类管理</CardTitle>
-                <CardDescription>管理工作流分类</CardDescription>
+                <CardTitle>分类体系管理</CardTitle>
+                <CardDescription>组织和维护工作流分类结构，优化用户浏览体验和内容发现效率</CardDescription>
               </div>
               <Button onClick={() => setIsCreateCategoryDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
                 <Plus className="w-4 h-4 mr-2" />
@@ -1851,8 +1886,8 @@ function AdminContent() {
         <TabsContent value="authors">
           <Card>
             <CardHeader>
-              <CardTitle>作者管理</CardTitle>
-              <CardDescription>管理工作流作者</CardDescription>
+              <CardTitle>作者信息管理</CardTitle>
+              <CardDescription>管理工作流创作者档案，包括个人信息、认证状态、作品统计等完整信息</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1923,17 +1958,24 @@ function AdminContent() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>用户管理</CardTitle>
-                <CardDescription>管理系统用户</CardDescription>
+                <CardTitle>用户账户管理</CardTitle>
+                <CardDescription>管理平台用户账户，包括权限分配、状态控制、安全设置等用户生命周期管理</CardDescription>
               </div>
               <Button onClick={() => {
                 setUserFormData({
                   username: '',
                   email: '',
                   password: '',
+                  confirmPassword: '',
                   role: 'user',
                   is_active: true
                 });
+                // 清空所有错误状态
+                setEmailError('');
+                setPasswordError('');
+                setConfirmPasswordError('');
+                setShowPassword(false);
+                setShowConfirmPassword(false);
                 setIsCreateUserDialogOpen(true);
               }} className="bg-black text-white hover:bg-gray-800">
                 <Plus className="w-4 h-4 mr-2" />
@@ -2449,7 +2491,7 @@ function AdminContent() {
               />
             </div>
             <div>
-              <Label htmlFor="user-email">邮箱</Label>
+              <Label htmlFor="user-email">邮箱（可选）</Label>
               <Input
                 id="user-email"
                 type="email"
@@ -2457,11 +2499,15 @@ function AdminContent() {
                 onChange={(e) => {
                   const email = e.target.value;
                   setUserFormData({ ...userFormData, email });
-                  // 实时验证邮箱格式
-                  const error = validateEmail(email);
-                  setEmailError(error);
+                  // 实时验证邮箱格式（仅在有输入时验证）
+                  if (email.trim()) {
+                    const error = validateEmail(email);
+                    setEmailError(error);
+                  } else {
+                    setEmailError('');
+                  }
                 }}
-                placeholder="请输入邮箱地址"
+                placeholder="请输入邮箱地址（可选）"
                 className={emailError ? 'border-red-500 focus:border-red-500' : ''}
               />
               {emailError && (
@@ -2470,22 +2516,67 @@ function AdminContent() {
             </div>
             <div>
               <Label htmlFor="user-password">密码</Label>
-              <Input
-                id="user-password"
-                type="password"
-                value={userFormData.password}
-                onChange={(e) => {
-                  const password = e.target.value;
-                  setUserFormData({ ...userFormData, password });
-                  // 实时验证密码长度
-                  const error = validatePassword(password);
-                  setPasswordError(error);
-                }}
-                placeholder="请输入密码（至少6个字符）"
-                className={passwordError ? 'border-red-500 focus:border-red-500' : ''}
-              />
+              <div className="relative">
+                <Input
+                  id="user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={userFormData.password}
+                  onChange={(e) => {
+                    const password = e.target.value;
+                    setUserFormData({ ...userFormData, password });
+                    // 实时验证密码长度
+                    const error = validatePassword(password);
+                    setPasswordError(error);
+                    // 清空确认密码错误
+                    if (confirmPasswordError) {
+                      setConfirmPasswordError('');
+                    }
+                  }}
+                  placeholder="请输入密码（至少6个字符）"
+                  className={`pr-10 ${passwordError ? 'border-red-500 focus:border-red-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" /> : <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />}
+                </button>
+              </div>
               {passwordError && (
                 <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="user-confirm-password">确认密码</Label>
+              <div className="relative">
+                <Input
+                  id="user-confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={userFormData.confirmPassword}
+                  onChange={(e) => {
+                    const confirmPassword = e.target.value;
+                    setUserFormData({ ...userFormData, confirmPassword });
+                    // 实时验证密码确认
+                    if (userFormData.password && confirmPassword && userFormData.password !== confirmPassword) {
+                      setConfirmPasswordError('两次输入的密码不一致');
+                    } else {
+                      setConfirmPasswordError('');
+                    }
+                  }}
+                  placeholder="请再次输入密码"
+                  className={`pr-10 ${confirmPasswordError ? 'border-red-500 focus:border-red-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" /> : <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />}
+                </button>
+              </div>
+              {confirmPasswordError && (
+                <p className="text-red-500 text-sm mt-1">{confirmPasswordError}</p>
               )}
             </div>
             <div>
@@ -2565,9 +2656,13 @@ function AdminContent() {
                 onChange={(e) => {
                   const email = e.target.value;
                   setUserFormData({ ...userFormData, email });
-                  // 实时验证邮箱格式
-                  const error = validateEmail(email);
-                  setEmailError(error);
+                  // 实时验证邮箱格式（仅在有输入时验证）
+                  if (email.trim()) {
+                    const error = validateEmail(email);
+                    setEmailError(error);
+                  } else {
+                    setEmailError('');
+                  }
                 }}
                 placeholder="请输入邮箱地址"
                 className={emailError ? 'border-red-500 focus:border-red-500' : ''}
@@ -2578,24 +2673,33 @@ function AdminContent() {
             </div>
             <div>
               <Label htmlFor="edit-user-password">密码</Label>
-              <Input
-                id="edit-user-password"
-                type="password"
-                value={userFormData.password}
-                onChange={(e) => {
-                  const password = e.target.value;
-                  setUserFormData({ ...userFormData, password });
-                  // 实时验证密码长度（仅在有输入时验证）
-                  if (password.trim()) {
-                    const error = validatePassword(password);
-                    setPasswordError(error);
-                  } else {
-                    setPasswordError('');
-                  }
-                }}
-                placeholder="留空则不修改密码（至少6个字符）"
-                className={passwordError ? 'border-red-500 focus:border-red-500' : ''}
-              />
+              <div className="relative">
+                <Input
+                  id="edit-user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={userFormData.password}
+                  onChange={(e) => {
+                    const password = e.target.value;
+                    setUserFormData({ ...userFormData, password });
+                    // 实时验证密码长度（仅在有输入时验证）
+                    if (password.trim()) {
+                      const error = validatePassword(password);
+                      setPasswordError(error);
+                    } else {
+                      setPasswordError('');
+                    }
+                  }}
+                  placeholder="留空则不修改密码（至少6个字符）"
+                  className={`pr-10 ${passwordError ? 'border-red-500 focus:border-red-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" /> : <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />}
+                </button>
+              </div>
               {passwordError && (
                 <p className="text-red-500 text-sm mt-1">{passwordError}</p>
               )}
@@ -2629,6 +2733,9 @@ function AdminContent() {
                 setIsEditUserDialogOpen(false);
                 setEmailError('');
                 setPasswordError('');
+                setConfirmPasswordError('');
+                setShowPassword(false);
+                setShowConfirmPassword(false);
               }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >

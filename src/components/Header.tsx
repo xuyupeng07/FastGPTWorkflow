@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ClientOnlyWrapper, useSafeEventHandler } from '@/components/HydrationSafeWrapper';
 import { motion } from 'framer-motion';
-import { Search, Star, LogIn, User, LogOut, UserPlus } from 'lucide-react';
+import { Search, Star, LogIn, User, LogOut, UserPlus, Settings } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { HeaderBackground } from './HeaderBackground';
 import { useRouter } from 'next/navigation';
@@ -195,6 +195,25 @@ export function Header({ onSearch }: HeaderProps) {
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline text-sm text-gray-700">欢迎, {user?.username}</span>
+                {user?.role === 'admin' && (
+                  <Tooltip 
+                    content="进入管理后台"
+                    side="bottom"
+                    align="center"
+                    delayDuration={100}
+                    className="bg-gray-900 text-white border-gray-700 text-xs"
+                  >
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => router.push('/admin')}
+                      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 hover:bg-gray-100 hover:scale-105 transition-all duration-200 rounded-md text-gray-700 hover:text-gray-900"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span className="hidden sm:inline text-sm">管理后台</span>
+                    </Button>
+                  </Tooltip>
+                )}
                 <Button 
                   variant="ghost" 
                   size="sm" 

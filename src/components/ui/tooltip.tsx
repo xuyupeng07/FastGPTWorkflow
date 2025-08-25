@@ -179,17 +179,22 @@ function Tooltip({
   }, [isVisible, side, align, anchorRef]);
 
   const getArrowClasses = () => {
-    const baseClasses = 'absolute w-2 h-2 bg-white border-white';
+    // 根据className判断背景色，默认使用深色主题
+    const isDarkTheme = className?.includes('bg-gray-900') || className?.includes('bg-black') || !className?.includes('bg-');
+    const arrowBg = isDarkTheme ? 'bg-gray-900' : 'bg-white';
+    const arrowBorder = isDarkTheme ? 'border-gray-900' : 'border-white';
+    
+    const baseClasses = `absolute w-3 h-3 ${arrowBg} ${arrowBorder} shadow-lg`;
     
     switch (side) {
       case 'top':
-        return `${baseClasses} border-b border-r transform rotate-45 -bottom-1`;
+        return `${baseClasses} border-b border-r transform rotate-45 -bottom-1.5`;
       case 'bottom':
-        return `${baseClasses} border-t border-l transform rotate-45 -top-1`;
+        return `${baseClasses} border-t border-l transform rotate-45 -top-1.5`;
       case 'left':
-        return `${baseClasses} border-t border-r transform rotate-45 -right-1`;
+        return `${baseClasses} border-t border-r transform rotate-45 -right-1.5`;
       case 'right':
-        return `${baseClasses} border-b border-l transform rotate-45 -left-1`;
+        return `${baseClasses} border-b border-l transform rotate-45 -left-1.5`;
       default:
         return baseClasses;
     }
@@ -199,22 +204,22 @@ function Tooltip({
     if (side === 'top' || side === 'bottom') {
       switch (align) {
         case 'start':
-          return 'left-4';
+          return 'left-3';
         case 'center':
           return 'left-1/2 transform -translate-x-1/2';
         case 'end':
-          return 'right-4';
+          return 'right-3';
         default:
           return 'left-1/2 transform -translate-x-1/2';
       }
     } else {
       switch (align) {
         case 'start':
-          return 'top-4';
+          return 'top-3';
         case 'center':
           return 'top-1/2 transform -translate-y-1/2';
         case 'end':
-          return 'bottom-4';
+          return 'bottom-3';
         default:
           return 'top-1/2 transform -translate-y-1/2';
       }
@@ -272,9 +277,9 @@ function Tooltip({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className={`fixed z-[99999] px-3 py-2 text-sm rounded-lg shadow-lg border pointer-events-none ${
+              className={`fixed z-[99999] px-3 py-2 text-sm rounded-lg shadow-xl border pointer-events-none backdrop-blur-sm ${
                  getTooltipTransform()
-               } ${className}`}
+               } ${className || 'bg-gray-900 text-white border-gray-700'}`}
               style={{
                 left: position.x,
                 top: position.y,
