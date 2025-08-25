@@ -41,7 +41,7 @@ export async function POST(
     if (action_type === 'copy' || action_type === 'try' || action_type === 'download') {
       await pool.query(`
         UPDATE workflows 
-        SET usage_count = usage_count + 1 
+        SET usage_count = COALESCE(usage_count, 0) + 1 
         WHERE id = $1
       `, [id]);
     }
