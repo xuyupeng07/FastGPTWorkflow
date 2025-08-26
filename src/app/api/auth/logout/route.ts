@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteUserSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,20 +14,8 @@ export async function POST(request: NextRequest) {
       token = cookieToken;
     }
     
-    if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: '未找到有效的认证令牌'
-        },
-        { status: 401 }
-      );
-    }
-    
-    // 删除用户会话
-    await deleteUserSession(token);
-    
-    console.log('用户注销成功');
+    // 注意：即使没有token也允许登出，因为可能是清除客户端状态
+    console.log('用户注销成功', token ? '(有token)' : '(无token)');
     
     // 创建响应并清除cookie
     const response = NextResponse.json({
@@ -49,13 +36,21 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('注销API错误:', error);
     
-    return NextResponse.json(
-      {
-        success: false,
-        message: '注销失败，请稍后重试'
-      },
-      { status: 500 }
-    );
+    // 即使出错也返回成功，因为登出主要是清除客户端状态
+    const response = NextResponse.json({
+      success: true,
+      message: '注销成功'
+    });
+    
+    // 确保清除cookie
+    response.cookies.set('auth_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0
+    });
+    
+    return response;
   }
 }
 
