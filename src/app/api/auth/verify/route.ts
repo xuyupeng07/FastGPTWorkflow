@@ -84,12 +84,15 @@ export async function GET(request: NextRequest) {
 
 // 处理OPTIONS请求（CORS预检）
 export async function OPTIONS() {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['https://demo.fastgpt.cn'];
+  
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigins[0],
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

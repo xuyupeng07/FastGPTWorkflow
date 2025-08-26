@@ -1,3 +1,4 @@
+require('dotenv').config({ path: '.env.local' });
 const { Pool } = require('pg');
 
 // 连接到数据库
@@ -330,4 +331,8 @@ async function copyWorkflowToSchemas() {
   }
 }
 
-copyWorkflowToSchemas();
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行命令: node scripts/copy-workflow-to-schemas.js
+// copyWorkflowToSchemas();
+
+module.exports = { copyWorkflowToSchemas };

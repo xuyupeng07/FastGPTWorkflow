@@ -8,15 +8,15 @@ declare global {
 
 // 获取数据库配置
 const getDbConfig = () => {
-  // 优先使用 DATABASE_URL 环境变量
+  // 使用 MYSQL_DATABASE_URL 环境变量
   const databaseUrl = process.env.MYSQL_DATABASE_URL;
   if (databaseUrl) {
     console.log('使用 MYSQL_DATABASE_URL 连接数据库');
     return { uri: databaseUrl };
-  }
-  else {
-    console.log('使用单独的配置参数连接MySQL数据库');
-    return {uri: 'mysql://root:bqsqcpp9@dbconn.sealoshzh.site:35853/datafollow'}
+  } else {
+    console.error('错误: 未找到 MYSQL_DATABASE_URL 环境变量');
+    console.error('请在 .env.local 文件中配置 MYSQL_DATABASE_URL');
+    throw new Error('MySQL数据库连接字符串未配置');
   }
 };
 

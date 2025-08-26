@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
   
   // Security headers and CORS configuration
   async headers() {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS || 'https://demo.fastgpt.cn';
+    
     return [
       {
         source: '/(.*)',
@@ -62,7 +64,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*',
+            value: allowedOrigins,
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -71,6 +73,10 @@ const nextConfig: NextConfig = {
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
           },
         ],
       },
@@ -79,7 +85,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*',
+            value: allowedOrigins,
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -88,6 +94,10 @@ const nextConfig: NextConfig = {
           {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization, X-Requested-With',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
           },
         ],
       },

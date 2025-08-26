@@ -44,11 +44,14 @@ export async function GET(
       workflowData = workflow;
     }
 
+    const allowedOrigins = process.env.ALLOWED_ORIGINS || 'https://demo.fastgpt.cn';
+    
     return NextResponse.json(workflowData, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*' // 允许跨域访问
+        'Access-Control-Allow-Origin': allowedOrigins,
+        'Access-Control-Allow-Credentials': 'true'
       }
     });
   } catch (error: any) {

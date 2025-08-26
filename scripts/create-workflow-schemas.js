@@ -286,4 +286,8 @@ async function createWorkflowSchemas() {
   }
 }
 
-createWorkflowSchemas();
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行命令: node scripts/create-workflow-schemas.js
+// createWorkflowSchemas();
+
+module.exports = { createWorkflowSchemas };

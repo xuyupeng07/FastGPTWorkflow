@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { pool } from '@/lib/db';
+import { mysqlQuery } from '@/lib/mysql-db';
 import { 
   createSuccessResponse, 
   createErrorResponse, 
@@ -210,20 +211,13 @@ export async function DELETE(
     
     // 删除MySQL中的短链相关数据
     try {
-      const mysql = require('mysql2/promise');
-      const mysqlConnection = await mysql.createConnection('mysql://root:bqsqcpp9@dbconn.sealoshzh.site:35853/datafollow');
+      // 删除link_info表中的相关记录
+      await mysqlQuery('DELETE FROM link_info WHERE project_code = ?', [id]);
+      console.log(`已删除MySQL中project_code为${id}的短链记录`);
       
-      try {
-        // 删除link_info表中的相关记录
-        await mysqlConnection.execute('DELETE FROM link_info WHERE project_code = ?', [id]);
-        console.log(`已删除MySQL中project_code为${id}的短链记录`);
-        
-        // 删除workflow表中的相关记录
-        await mysqlConnection.execute('DELETE FROM workflow WHERE project_code = ?', [id]);
-        console.log(`已删除MySQL中project_code为${id}的workflow记录`);
-      } finally {
-        await mysqlConnection.end();
-      }
+      // 删除workflow表中的相关记录
+      await mysqlQuery('DELETE FROM workflow WHERE project_code = ?', [id]);
+      console.log(`已删除MySQL中project_code为${id}的workflow记录`);
     } catch (mysqlError) {
       console.error('删除MySQL中的相关数据失败:', mysqlError);
       // 不中断删除流程，只记录错误

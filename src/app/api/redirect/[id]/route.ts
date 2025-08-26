@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { mysqlQuery } from '@/lib/mysql-db';
 
 // 提取UTM参数的辅助函数
 function extractUTMParams(url: string) {
@@ -44,53 +45,46 @@ export async function GET(
   try {
     const { id } = await params;
     
-    // 连接MySQL数据库查询短链对应的长链接
-    const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection('mysql://root:bqsqcpp9@dbconn.sealoshzh.site:35853/datafollow');
+    // 查询短链对应的长链接
+    const rows = await mysqlQuery(
+      'SELECT id, long_url FROM link_info WHERE id = ? LIMIT 1',
+      [id]
+    ) as any[];
     
-    try {
-      const [rows] = await connection.execute(
-        'SELECT id, long_url FROM link_info WHERE id = ? LIMIT 1',
-        [id]
-      );
+    if (rows && rows.length > 0) {
+      const linkId = rows[0].id;
+      const longUrl = rows[0].long_url;
       
-      if (rows && rows.length > 0) {
-        const linkId = rows[0].id;
-        const longUrl = rows[0].long_url;
-        
-        // 提取UTM参数
-        const utmParams = extractUTMParams(longUrl);
-        
-        // 获取访问者信息
-        const ipAddress = getClientIP(request);
-        const userAgent = request.headers.get('user-agent') || '';
-        const referer = request.headers.get('referer') || '';
-        
-        // 记录点击统计（异步执行，不阻塞重定向）
-        connection.execute(
-          `INSERT INTO click_analytics (
-            link_id, ip_address, user_agent, referer, 
-            utm_source, utm_medium, utm_content, utm_campaign, utm_workflow
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            linkId, ipAddress, userAgent, referer,
-            utmParams.utm_source, utmParams.utm_medium, utmParams.utm_content,
-            utmParams.utm_campaign, utmParams.utm_workflow
-          ]
-        ).catch((error: any) => {
-          console.error('[点击统计] 记录失败:', error);
-        });
-        
-        console.log(`短链重定向: ${id} -> ${longUrl}`);
-        // 返回重定向响应
-        return NextResponse.redirect(longUrl, { status: 307 });
-      } else {
-        console.log(`短链不存在: ${id}`);
-        // 如果找不到对应的短链，重定向到首页
-        return NextResponse.redirect('https://qktyoucivudx.sealoshzh.site/', { status: 307 });
-      }
-    } finally {
-      await connection.end();
+      // 提取UTM参数
+      const utmParams = extractUTMParams(longUrl);
+      
+      // 获取访问者信息
+      const ipAddress = getClientIP(request);
+      const userAgent = request.headers.get('user-agent') || '';
+      const referer = request.headers.get('referer') || '';
+      
+      // 记录点击统计（异步执行，不阻塞重定向）
+      mysqlQuery(
+        `INSERT INTO click_analytics (
+          link_id, ip_address, user_agent, referer, 
+          utm_source, utm_medium, utm_content, utm_campaign, utm_workflow
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          linkId, ipAddress, userAgent, referer,
+          utmParams.utm_source, utmParams.utm_medium, utmParams.utm_content,
+          utmParams.utm_campaign, utmParams.utm_workflow
+        ]
+      ).catch((error: any) => {
+        console.error('[点击统计] 记录失败:', error);
+      });
+      
+      console.log(`短链重定向: ${id} -> ${longUrl}`);
+      // 返回重定向响应
+      return NextResponse.redirect(longUrl, { status: 307 });
+    } else {
+      console.log(`短链不存在: ${id}`);
+      // 如果找不到对应的短链，重定向到首页
+      return NextResponse.redirect('https://qktyoucivudx.sealoshzh.site/', { status: 307 });
     }
   } catch (error) {
     console.error('短链重定向失败:', error);

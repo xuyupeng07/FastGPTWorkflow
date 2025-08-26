@@ -86,7 +86,12 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('注册失败:', error);
+    // 记录错误但不暴露详细信息
+    console.error('注册API错误:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      ip: request.headers.get('x-forwarded-for') || 'unknown'
+    });
     
     // 检查是否是数据库约束错误
     if (error instanceof Error && error.message.includes('duplicate key')) {
@@ -96,9 +101,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // 通用错误响应，不暴露内部错误信息
     return NextResponse.json({
       success: false,
-      message: '注册失败，请稍后重试'
+      message: '服务暂时不可用，请稍后重试'
     }, { status: 500 });
   }
 }

@@ -2,8 +2,20 @@ const { Pool } = require('pg');
 require('dotenv').config({ path: '.env.local' });
 
 // 数据库连接配置
+const DATABASE_URL = process.env.DATABASE_URL;
+const DB_SCHEMA = process.env.DB_SCHEMA || 'workflow';
+const FALLBACK_SCHEMA = process.env.DB_FALLBACK_SCHEMA || 'public';
+
+// 构建search_path
+const getSearchPath = () => {
+  if (DB_SCHEMA === 'public') {
+    return 'public';
+  }
+  return `${DB_SCHEMA}, ${FALLBACK_SCHEMA}`;
+};
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
   ssl: false
 });
 
@@ -12,6 +24,11 @@ async function createUsersTable() {
   
   try {
     console.log('开始创建用户表...');
+    
+    // 设置schema
+    const searchPath = getSearchPath();
+    await client.query(`SET search_path TO ${searchPath}`);
+    console.log(`✅ 已设置数据库schema为: ${searchPath}`);
     
     // 创建用户表
     await client.query(`
@@ -70,12 +87,16 @@ async function createUsersTable() {
 }
 
 // 执行创建表
-createUsersTable()
-  .then(() => {
-    console.log('用户表创建完成');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('创建失败:', error);
-    process.exit(1);
-  });
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行命令: node scripts/create-users-table.js
+// createUsersTable()
+//   .then(() => {
+//     console.log('用户表创建完成');
+//     process.exit(0);
+//   })
+//   .catch((error) => {
+//     console.error('创建失败:', error);
+//     process.exit(1);
+//   });
+
+module.exports = { createUsersTable };

@@ -323,7 +323,7 @@ async function createFastAgentDatabase() {
     
     console.log('\n=== FastAgent数据库创建和数据复制完成 ===');
     console.log('✅ 数据库名称: FastAgent');
-    console.log('✅ 连接字符串: postgresql://postgres:mjns8kr8@dbconn.sealoshzh.site:47291/FastAgent?directConnection=true');
+    console.log('✅ 连接字符串: [已配置]');
     console.log(`✅ 总记录数: 源数据库 ${totalSourceRecords} 条，目标数据库 ${totalTargetRecords} 条`);
     console.log('✅ 所有表结构、数据、约束和索引已尽可能完整复制');
     
@@ -338,4 +338,8 @@ async function createFastAgentDatabase() {
   }
 }
 
-createFastAgentDatabase();
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行命令: node scripts/create-fastagent-database.js
+// createFastAgentDatabase();
+
+module.exports = { createFastAgentDatabase };

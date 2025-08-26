@@ -255,4 +255,9 @@ async function initializeDatabase() {
 }
 
 // 运行初始化
-initializeDatabase();
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行前请确保已安装 mysql2 依赖: pnpm install mysql2
+// 执行命令: node init-mysql-db.js
+// initializeDatabase();
+
+module.exports = { initializeDatabase };

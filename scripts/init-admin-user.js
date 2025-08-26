@@ -3,8 +3,20 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // 数据库连接配置
+const DATABASE_URL = process.env.DATABASE_URL;
+const DB_SCHEMA = process.env.DB_SCHEMA || 'workflow';
+const FALLBACK_SCHEMA = process.env.DB_FALLBACK_SCHEMA || 'public';
+
+// 构建search_path
+const getSearchPath = () => {
+  if (DB_SCHEMA === 'public') {
+    return 'public';
+  }
+  return `${DB_SCHEMA}, ${FALLBACK_SCHEMA}`;
+};
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
   ssl: false
 });
 
@@ -13,6 +25,11 @@ async function initAdminUser() {
   
   try {
     console.log('开始初始化管理员用户...');
+    
+    // 设置schema
+    const searchPath = getSearchPath();
+    await client.query(`SET search_path TO ${searchPath}`);
+    console.log(`✅ 已设置数据库schema为: ${searchPath}`);
     
     // 检查是否已存在管理员用户
     const existingAdmin = await client.query(
@@ -55,13 +72,16 @@ async function initAdminUser() {
   }
 }
 
-// 执行初始化
-initAdminUser()
-  .then(() => {
-    console.log('管理员用户初始化完成');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('初始化失败:', error);
-    process.exit(1);
-  });
+// 注意：这是初始化脚本，请根据需要手动执行
+// 执行命令: node scripts/init-admin-user.js
+// initAdminUser()
+//   .then(() => {
+//     console.log('管理员用户初始化完成');
+//     process.exit(0);
+//   })
+//   .catch((error) => {
+//     console.error('初始化失败:', error);
+//     process.exit(1);
+//   });
+
+module.exports = { initAdminUser };

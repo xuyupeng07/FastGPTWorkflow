@@ -33,13 +33,15 @@ export async function POST(request: NextRequest) {
                     'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
     
-    console.log(`登录尝试: ${credentials.username} from ${clientIP}`);
+    // 记录登录尝试（不包含敏感信息）
+    console.log(`登录尝试来自: ${clientIP}`);
     
     // 验证用户凭据
     const authResult = await authenticateUser(credentials);
     
     if (!authResult) {
-      console.log(`登录失败: ${credentials.username} - 用户名或密码错误`);
+      // 不记录具体用户名，避免信息泄露
+      console.log(`登录失败来自: ${clientIP}`);
       return NextResponse.json(
         {
           success: false,
@@ -51,7 +53,8 @@ export async function POST(request: NextRequest) {
     
     const { user, token } = authResult;
     
-    console.log(`登录成功: ${user.username} (${user.role})`);
+    // 记录成功登录（可以包含用户名，因为已验证）
+    console.log(`用户 ${user.username} 登录成功`);
     
     // 创建响应
     const response = NextResponse.json({
@@ -80,16 +83,31 @@ export async function POST(request: NextRequest) {
     return response;
     
   } catch (error: any) {
-    console.error('登录API错误:', error);
+    // 记录错误但不暴露详细信息
+    console.error('登录API错误:', {
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      ip: request.headers.get('x-forwarded-for') || 'unknown'
+    });
     
-    // 处理特定的错误类型
-    if (error.message === '账号已被禁用，请联系管理员') {
+    // 处理特定的错误类型，统一错误消息格式
+    if (error.message.includes('账号已被锁定')) {
       return NextResponse.json(
         {
           success: false,
-          message: '账号已被禁用，请联系管理员'
+          message: '账号暂时被锁定，请稍后重试'
         },
-        { status: 403 }
+        { status: 423 }
+      );
+    }
+    
+    if (error.message.includes('密码错误')) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: '用户名或密码错误'
+        },
+        { status: 401 }
       );
     }
     
@@ -97,16 +115,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: '账号已被禁用，请联系管理员'
+          message: '账号状态异常，请联系管理员'
         },
         { status: 403 }
       );
     }
     
+    // 通用错误响应，不暴露内部错误信息
     return NextResponse.json(
       {
         success: false,
-        message: '登录失败，请稍后重试'
+        message: '服务暂时不可用，请稍后重试'
       },
       { status: 500 }
     );
@@ -115,12 +134,15 @@ export async function POST(request: NextRequest) {
 
 // 处理OPTIONS请求（CORS预检）
 export async function OPTIONS() {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['https://demo.fastgpt.cn'];
+  
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigins[0],
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

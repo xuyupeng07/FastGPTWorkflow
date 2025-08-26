@@ -3,8 +3,12 @@ import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 import { pool } from './db';
 
-// JWT密钥，生产环境应该使用环境变量
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+// JWT密钥，必须从环境变量获取
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET_STRING: string = JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 // 用户接口定义
@@ -64,7 +68,7 @@ export async function verifyPassword(password: string, hashedPassword: string): 
  * 生成JWT令牌
  */
 export function generateJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
+  return jwt.sign(payload, JWT_SECRET_STRING, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 }
 
 /**
@@ -72,7 +76,7 @@ export function generateJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
  */
 export function verifyJWT(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return jwt.verify(token, JWT_SECRET_STRING) as JWTPayload;
   } catch (error) {
     console.error('JWT验证失败:', error);
     return null;
@@ -166,7 +170,10 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
     
     // 检查用户是否被锁定
     if (userRecord.locked_until && new Date(userRecord.locked_until) > new Date()) {
-      throw new Error('账号已被禁用，请联系管理员');
+      const lockedUntil = new Date(userRecord.locked_until);
+      const now = new Date();
+      const remainingMinutes = Math.ceil((lockedUntil.getTime() - now.getTime()) / (1000 * 60));
+      throw new Error(`账号已被锁定，请在${remainingMinutes}分钟后重试`);
     }
     
     // 检查用户是否激活
@@ -181,10 +188,12 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
       // 增加登录失败次数
       const newAttempts = (userRecord.login_attempts || 0) + 1;
       let lockedUntil = null;
+      const maxAttempts = 5;
+      const lockDurationMinutes = 30;
       
       // 如果失败次数超过5次，锁定账户30分钟
-      if (newAttempts >= 5) {
-        lockedUntil = new Date(Date.now() + 30 * 60 * 1000); // 30分钟后
+      if (newAttempts >= maxAttempts) {
+        lockedUntil = new Date(Date.now() + lockDurationMinutes * 60 * 1000); // 30分钟后
       }
       
       await dbPool.query(
@@ -193,10 +202,12 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<{
       );
       
       if (lockedUntil) {
-        throw new Error('账号已被禁用，请联系管理员');
+        throw new Error(`密码错误次数过多，账号已被锁定${lockDurationMinutes}分钟，请稍后再试`);
       }
       
-      return null;
+      // 返回详细的错误信息，包含剩余尝试次数
+      const remainingAttempts = maxAttempts - newAttempts;
+      throw new Error(`密码错误，您还有${remainingAttempts}次尝试机会，超过${maxAttempts}次将锁定账号${lockDurationMinutes}分钟`);
     }
     
     // 登录成功，重置登录失败次数并更新最后登录时间
