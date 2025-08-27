@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { useSafeLocalStorage } from '@/components/HydrationSafeWrapper';
 
 interface User {
   id: number;
@@ -32,26 +31,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const hasInitialized = useRef(false);
 
-  // 使用安全的localStorage访问
-  const [authToken, setAuthToken, isTokenLoaded] = useSafeLocalStorage('auth_token', '');
-  const [userData, setUserData, isUserDataLoaded] = useSafeLocalStorage('user_data', '');
+  // 直接使用localStorage，不依赖复杂的加载状态
+  const getStorageValue = (key: string): string => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key) || '';
+      }
+    } catch (e) {
+      console.warn(`读取localStorage失败 ${key}:`, e);
+    }
+    return '';
+  };
 
-  // 检查本地存储中的认证状态
+  const setStorageValue = (key: string, value: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (value) {
+          window.localStorage.setItem(key, value);
+        } else {
+          window.localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {
+      console.warn(`设置localStorage失败 ${key}:`, e);
+    }
+  };
+
+  // 简化的初始化逻辑
   useEffect(() => {
-    // 确保localStorage已加载完成且未初始化过
-    if (!isTokenLoaded || !isUserDataLoaded || hasInitialized.current) {
+    if (hasInitialized.current) {
       return;
     }
 
     const initializeAuth = async () => {
-      console.log('初始化认证状态，userData:', userData, 'authToken:', authToken ? '存在' : '不存在');
+      console.log('开始初始化认证状态');
       hasInitialized.current = true;
       
       try {
+        // 直接从localStorage读取数据
+        const token = getStorageValue('auth_token');
+        const storedUserData = getStorageValue('user_data');
+        
+        console.log('读取到的数据 - token:', token ? '存在' : '不存在', 'userData:', storedUserData);
+        
         // 优先从本地存储恢复用户状态
-        if (userData && userData.trim() !== '') {
+        if (storedUserData && storedUserData.trim() !== '') {
           try {
-            const parsedUser = JSON.parse(userData);
+            const parsedUser = JSON.parse(storedUserData);
             console.log('解析用户数据:', parsedUser);
             
             if (parsedUser && parsedUser.id) {
@@ -60,18 +86,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
               console.log('从localStorage恢复登录状态成功');
               
               // 异步验证token但不阻塞状态恢复
-              if (authToken && authToken.trim() !== '') {
+              if (token && token.trim() !== '') {
                 fetch('/api/auth/verify', {
                   method: 'GET',
                   headers: {
-                    'Authorization': `Bearer ${authToken}`,
+                    'Authorization': `Bearer ${token}`,
                   },
                 })
                 .then(response => {
                   if (!response.ok) {
                     console.log('Token验证失败，清除认证状态');
-                    setAuthToken('');
-                    setUserData('');
+                    setStorageValue('auth_token', '');
+                    setStorageValue('user_data', '');
                     setIsAuthenticated(false);
                     setUser(null);
                   } else {
@@ -89,18 +115,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           } catch (error) {
             console.error('解析用户数据失败:', error);
-            setUserData('');
+            setStorageValue('user_data', '');
             setIsAuthenticated(false);
             setUser(null);
           }
-        } else if (authToken && authToken.trim() !== '') {
+        } else if (token && token.trim() !== '') {
           console.log('只有token，尝试获取用户信息');
           // 只有token没有用户数据时，尝试通过API获取
           try {
             const response = await fetch('/api/auth/verify', {
               method: 'GET',
               headers: {
-                'Authorization': `Bearer ${authToken}`,
+                'Authorization': `Bearer ${token}`,
               },
             });
 
@@ -110,22 +136,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 console.log('通过token获取用户信息成功');
                 setIsAuthenticated(true);
                 setUser(result.data.user);
-                setUserData(JSON.stringify(result.data.user));
+                setStorageValue('user_data', JSON.stringify(result.data.user));
               } else {
                 console.log('token验证失败，清除token');
-                setAuthToken('');
+                setStorageValue('auth_token', '');
                 setIsAuthenticated(false);
                 setUser(null);
               }
             } else {
               console.log('token验证请求失败，清除token');
-              setAuthToken('');
+              setStorageValue('auth_token', '');
               setIsAuthenticated(false);
               setUser(null);
             }
           } catch (error) {
             console.error('token验证网络错误:', error);
-            setAuthToken('');
+            setStorageValue('auth_token', '');
             setIsAuthenticated(false);
             setUser(null);
           }
@@ -146,7 +172,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // 执行初始化
     initializeAuth();
-  }, [isTokenLoaded, isUserDataLoaded]); // 只依赖localStorage加载状态
+  }, []); // 只在组件挂载时执行一次
 
   const login = async (credentials: { username: string; password: string }): Promise<{ success: boolean; message?: string }> => {
     try {
@@ -166,8 +192,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const userData = result.data.user;
         
         // 同步更新localStorage
-        setAuthToken(token);
-        setUserData(JSON.stringify(userData));
+        setStorageValue('auth_token', token);
+        setStorageValue('user_data', JSON.stringify(userData));
         
         // 立即更新React状态
         setIsAuthenticated(true);
@@ -235,8 +261,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       // 清除本地存储 - 确保操作完成
-      setAuthToken('');
-      setUserData('');
+      setStorageValue('auth_token', '');
+      setStorageValue('user_data', '');
       
       // 等待一小段时间确保localStorage操作完成
       await new Promise(resolve => setTimeout(resolve, 100));

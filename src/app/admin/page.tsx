@@ -105,6 +105,7 @@ function AdminContent() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
+  const [isEditSaveSuccess, setIsEditSaveSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('workflows');
   const [uploading, setUploading] = useState(false);
   
@@ -232,6 +233,16 @@ function AdminContent() {
   useEffect(() => {
     console.log('Preview image state changed:', !!previewImage, previewImage?.substring(0, 50) + '...');
   }, [previewImage]);
+
+  // 当authors数据加载完成后，设置默认作者为FastGPT团队
+  useEffect(() => {
+    if (authors.length > 0 && !formData.author_id) {
+      const fastgptTeam = authors.find(author => author.name === 'FastGPT团队');
+      if (fastgptTeam) {
+        setFormData(prev => ({ ...prev, author_id: fastgptTeam.id.toString() }));
+      }
+    }
+  }, [authors, formData.author_id]);
 
   // 优化的过滤逻辑
   const filteredWorkflows = useMemo(() => {
@@ -809,7 +820,36 @@ function AdminContent() {
 
       const result = await response.json();
       if (result.success) {
+        // 如果有新的缩略图（与原始工作流不同），确认临时图片为永久图片
+        if (formData.thumbnail_image_id && 
+            editingWorkflow && 
+            formData.thumbnail_image_id !== editingWorkflow.thumbnail_image_id) {
+          try {
+            const confirmResponse = await fetch('/api/images/confirm', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                imageId: formData.thumbnail_image_id,
+                entityType: 'workflow',
+                entityId: editingWorkflow.id,
+                usageType: 'thumbnail',
+                isPrimary: true
+              }),
+            });
+            
+            const confirmResult = await confirmResponse.json();
+            if (!confirmResult.success) {
+              console.warn('图片确认失败:', confirmResult.error);
+            }
+          } catch (error) {
+            console.warn('图片确认失败:', error);
+          }
+        }
+        
         toast.success('工作流更新成功');
+        setIsEditSaveSuccess(true);
         setIsEditDialogOpen(false);
         setEditingWorkflow(null);
         await resetForm();
@@ -2225,7 +2265,20 @@ function AdminContent() {
       </Tabs>
 
       {/* 编辑对话框 */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={async (open) => {
+        if (!open) {
+          // 只有在非保存成功关闭时才清理临时图片
+          if (!isEditSaveSuccess && formData.thumbnail_image_id && 
+              editingWorkflow && 
+              formData.thumbnail_image_id !== editingWorkflow.thumbnail_image_id) {
+            // 对话框关闭时清理临时图片
+            await cleanupTempImage(formData.thumbnail_image_id);
+          }
+          // 重置保存成功状态
+          setIsEditSaveSuccess(false);
+        }
+        setIsEditDialogOpen(open);
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white scrollbar-custom">
           <DialogHeader>
             <DialogTitle>编辑工作流</DialogTitle>
@@ -2451,7 +2504,17 @@ function AdminContent() {
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsEditDialogOpen(false)}
+              onClick={async () => {
+                // 如果当前的缩略图ID与原始工作流的不同，说明是新上传的临时图片，需要清理
+                if (formData.thumbnail_image_id && 
+                    editingWorkflow && 
+                    formData.thumbnail_image_id !== editingWorkflow.thumbnail_image_id) {
+                  await cleanupTempImage(formData.thumbnail_image_id);
+                }
+                // 确保不是保存成功状态
+                setIsEditSaveSuccess(false);
+                setIsEditDialogOpen(false);
+              }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               取消
@@ -2889,12 +2952,18 @@ function AdminPageWithAuth() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                  <div className="text-lg text-gray-600">加载中...</div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <div className="text-lg text-gray-600">正在加载管理后台...</div>
+                  <div className="text-sm text-gray-500 mt-2">请稍候，系统正在验证您的权限</div>
                 </div>
               </div>
             </CardContent>
           </Card>
+          
+          {/* 添加进度指示器 */}
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div className="bg-blue-600 h-1 rounded-full animate-pulse" style={{width: '60%'}}></div>
+          </div>
         </div>
       </div>
     );

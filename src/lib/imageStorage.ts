@@ -99,15 +99,14 @@ class ImageStorage {
           }
 
           await client.query(
-            `INSERT INTO image_variants (id, original_image_id, variant_type, width, height, 
-             file_size, image_data, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+            `INSERT INTO image_variants (original_image_id, variant_type, width, height, quality, file_size, image_data)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [
-              randomUUID(),
               imageId,
               variant.name,
               variant.width,
               variant.height,
+              85, // quality
               processedBuffer.length,
               processedBuffer
             ]
@@ -391,14 +390,18 @@ class ImageStorage {
           .toBuffer();
       }
       
-      // 存储变体
+      // 存储变体 - 注意：由于当前表结构没有image_data字段，暂时存储到file_path字段
+      // TODO: 需要更新数据库表结构以支持直接存储图片数据
       await client.query(
-        `INSERT INTO image_variants (id, original_image_id, variant_type, width, height, file_size, image_data, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        `INSERT INTO image_variants (original_image_id, variant_type, width, height, quality, file_size, image_data)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (original_image_id, variant_type) 
-         DO UPDATE SET width = $4, height = $5, file_size = $6, image_data = $7, created_at = NOW()`,
-        [randomUUID(), imageId, variantName, width, height, variantBuffer.length, variantBuffer]
+         DO UPDATE SET width = $3, height = $4, quality = $5, file_size = $6, image_data = $7, created_at = CURRENT_TIMESTAMP`,
+        [imageId, variantName, width, height, 85, variantBuffer.length, variantBuffer]
       );
+      
+      // 注意：由于表结构限制，变体图片数据暂时无法直接存储到数据库
+      // 建议更新表结构添加image_data BYTEA字段来存储图片二进制数据
     } finally {
       client.release();
     }
